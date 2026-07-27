@@ -306,7 +306,7 @@
     background:var(--ink);color:#f3f5ec;padding:13px 18px;border-radius:14px;font-size:13.5px;font-weight:500;
     box-shadow:var(--shadow);opacity:0;visibility:hidden;transition:all .3s;display:flex;align-items:center;gap:9px;max-width:88%}
   .toast.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
-  .toast svg{width:18px;h
+  .toast svg{width:18px;height:18px;stroke:var(--ochre);fill:none;stroke-width:2.2;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -693,8 +693,22 @@
       const amt = (+data.amount.replace(/\D/g,'')||0) || (90000+Math.floor(Math.random()*60000));
       data.fsp={debt:amt, creditor:'ООО «МКК Ромашка»'};
       box.classList.add('ok');
-      box.innerHTML=`<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--pine);fill:none;stroke-width:2.2;flex-shrink:0"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/>
-haptic('success');
+      box.innerHTML=`<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--pine);fill:none;stroke-width:2.2;flex-shrink:0"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><div class="lbl">Найдено в базе: долг <b>${fmt(amt)}</b>, взыскатель ООО «МКК Ромашка»</div>`;
+      haptic('success');
+    },1300);
+  }
+
+  // nav buttons
+  $('#nextBtn').addEventListener('click', ()=>{
+    if(!stepValid(step)) return;
+    haptic('medium');
+    if(step<3){ gotoStep(step+1); }
+    else submit();
+  });
+  $('#prevBtn').addEventListener('click', ()=>{ haptic('light'); if(step>1) gotoStep(step-1); });
+
+  function submit(){
+    haptic('success');
     const amt = +data.amount.replace(/\D/g,'')||0;
     myRequests.unshift({
       id:'r'+Date.now(),
