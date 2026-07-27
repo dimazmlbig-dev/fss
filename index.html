@@ -5,29 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Взаимопомощь · TMA</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..900,30..100&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#e9ede1;
-    --paper-2:#eef1e7;
-    --surface:#fbfcf7;
-    --surface-2:#f3f5ec;
-    --ink:#15201a;
-    --ink-soft:#4d594f;
-    --ink-faint:#828d80;
-    --line:#d4d9c7;
-    --line-soft:#e2e6d8;
-    --pine:#1c6b4a;
-    --pine-deep:#103f2c;
-    --pine-soft:#dcebe1;
-    --ochre:#bd7d16;
-    --ochre-soft:#f1e3c4;
-    --slate:#5d6b62;
-    --danger:#a8392c;
+    --paper:#e9ede1; --paper-2:#eef1e7; --surface:#fbfcf7; --surface-2:#f3f5ec;
+    --ink:#15201a; --ink-soft:#4d594f; --ink-faint:#828d80;
+    --line:#d4d9c7; --line-soft:#e2e6d8;
+    --pine:#1c6b4a; --pine-deep:#103f2c; --pine-soft:#dcebe1;
+    --ochre:#bd7d16; --ochre-soft:#f1e3c4; --slate:#5d6b62; --danger:#a8392c;
     --radius:18px;
-    --radius-sm:12px;
     --shadow:0 18px 40px -22px rgba(16,40,28,.45);
     --shadow-sm:0 6px 18px -12px rgba(16,40,28,.4);
     --font-display:"Fraunces",Georgia,serif;
@@ -36,80 +25,35 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
-  body{
-    font-family:var(--font-body);
-    color:var(--ink);
-    background:#cfd4c4;
-    display:flex;justify-content:center;
-    -webkit-font-smoothing:antialiased;
-    line-height:1.45;
-  }
-  /* ---------- app shell / mobile frame ---------- */
-  .app{
-    position:relative;
-    width:100%;max-width:440px;min-height:100vh;min-height:100dvh;
-    background:var(--paper);
-    overflow:hidden;
-    display:flex;flex-direction:column;
-    box-shadow:0 0 80px -20px rgba(0,0,0,.4);
-  }
-  @media(min-width:520px){
-    body{padding:24px 0}
-    .app{min-height:calc(100vh - 48px);min-height:calc(100dvh - 48px);border-radius:30px;overflow:hidden}
-  }
-
-  /* ---------- ambient background (topo lines + grain) ---------- */
+  body{font-family:var(--font-body);color:var(--ink);background:#cfd4c4;display:flex;justify-content:center;-webkit-font-smoothing:antialiased;line-height:1.45}
+  .app{position:relative;width:100%;max-width:440px;min-height:100vh;min-height:100dvh;background:var(--paper);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 80px -20px rgba(0,0,0,.4)}
+  @media(min-width:520px){body{padding:24px 0}.app{min-height:calc(100vh - 48px);min-height:calc(100dvh - 48px);border-radius:30px}}
   .ambient{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:.5}
   .ambient svg{position:absolute;top:-10%;left:-20%;width:140%;height:120%;animation:drift 38s ease-in-out infinite alternate}
   .ambient svg path{fill:none;stroke:var(--pine);stroke-width:1;opacity:.10}
   .ambient svg path:nth-child(even){stroke:var(--ochre);opacity:.08}
   @keyframes drift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.06)}}
-  .grain{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.05;mix-blend-mode:multiply;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-
-  /* ---------- top bar ---------- */
-  .topbar{
-    position:relative;z-index:5;
-    background:var(--ink);color:#f3f5ec;
-    padding:16px 18px 14px;
-    display:flex;align-items:center;gap:12px;
-  }
+  .grain{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.05;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .topbar{position:relative;z-index:5;background:var(--ink);color:#f3f5ec;padding:16px 18px 14px;display:flex;align-items:center;gap:12px}
   .topbar .x,.topbar .dots{width:30px;height:30px;display:grid;place-items:center;opacity:.85;cursor:pointer}
   .topbar .x svg,.topbar .dots svg{width:20px;height:20px;stroke:#f3f5ec;fill:none;stroke-width:2}
   .topbar h1{font-family:var(--font-display);font-weight:600;font-size:21px;letter-spacing:.2px;flex:1;font-variation-settings:"opsz" 24}
   .topbar .chev{width:22px;height:22px;stroke:#f3f5ec;fill:none;stroke-width:2;opacity:.8}
-
-  /* ---------- screens ---------- */
-  .screen{position:relative;z-index:3;flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:96px;
-    display:none;animation:screenIn .42s cubic-bezier(.2,.7,.2,1)}
+  .screen{position:relative;z-index:3;flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:96px;display:none;animation:screenIn .42s cubic-bezier(.2,.7,.2,1)}
   .screen.active{display:block}
   @keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   .scrollpad{padding:0 16px}
-
-  /* ---------- collections header ---------- */
   .col-head{display:flex;align-items:center;gap:12px;padding:18px 16px 14px}
-  .col-logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(150deg,var(--pine),var(--pine-deep));
-    display:grid;place-items:center;box-shadow:var(--shadow-sm);flex-shrink:0}
+  .col-logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(150deg,var(--pine),var(--pine-deep));display:grid;place-items:center;box-shadow:var(--shadow-sm);flex-shrink:0}
   .col-logo svg{width:26px;height:26px;stroke:#eafff3;fill:none;stroke-width:2}
   .col-titles{flex:1;min-width:0}
   .col-titles .t{font-family:var(--font-display);font-weight:600;font-size:22px;line-height:1.05;font-variation-settings:"opsz" 24}
   .col-titles .s{color:var(--ink-soft);font-size:13px;margin-top:2px}
-  .btn-apply{
-    background:var(--pine);color:#eafff3;border:none;cursor:pointer;
-    font-family:var(--font-body);font-weight:600;font-size:14px;
-    padding:13px 16px;border-radius:16px;display:flex;align-items:center;gap:8px;
-    box-shadow:0 12px 24px -12px rgba(28,107,74,.8);transition:transform .15s, box-shadow .15s, background .2s;
-  }
+  .btn-apply{background:var(--pine);color:#eafff3;border:none;cursor:pointer;font-family:var(--font-body);font-weight:600;font-size:14px;padding:13px 16px;border-radius:16px;display:flex;align-items:center;gap:8px;box-shadow:0 12px 24px -12px rgba(28,107,74,.8);transition:transform .15s, background .2s}
   .btn-apply:active{transform:scale(.96)}
   .btn-apply:hover{background:var(--pine-deep)}
   .btn-apply .plus{font-size:18px;line-height:1}
-
-  /* ---------- community ticker ---------- */
-  .ticker{
-    margin:2px 16px 14px;border:1px solid var(--line);border-radius:var(--radius);
-    background:var(--surface);padding:14px 16px;display:flex;align-items:center;gap:13px;
-    box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
-  }
+  .ticker{margin:2px 16px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
   .ticker::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ochre)}
   .ticker .pulse{width:9px;height:9px;border-radius:50%;background:var(--pine);position:relative;flex-shrink:0}
   .ticker .pulse::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--pine);opacity:.5;animation:ping 1.8s ease-out infinite}
@@ -117,34 +61,16 @@
   .ticker .txt{font-size:12.5px;color:var(--ink-soft);flex:1}
   .ticker .txt b{color:var(--ink);font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums}
   .ticker .num{font-family:var(--font-mono);font-weight:600;color:var(--pine-deep);font-size:15px;font-variant-numeric:tabular-nums}
-
-  /* ---------- info banner ---------- */
-  .banner{
-    margin:0 16px 16px;border:1px solid var(--pine-soft);background:var(--pine-soft);
-    border-radius:var(--radius);padding:14px 15px;display:flex;gap:12px;align-items:flex-start;
-  }
+  .banner{margin:0 16px 16px;border:1px solid var(--pine-soft);background:var(--pine-soft);border-radius:var(--radius);padding:14px 15px;display:flex;gap:12px;align-items:flex-start}
   .banner svg{width:22px;height:22px;stroke:var(--pine);fill:none;stroke-width:2;flex-shrink:0;margin-top:1px}
   .banner p{font-size:13.5px;color:var(--pine-deep);line-height:1.4}
-
-  /* ---------- filter chips ---------- */
   .chips{display:flex;gap:9px;padding:2px 16px 16px;overflow-x:auto;scrollbar-width:none}
   .chips::-webkit-scrollbar{display:none}
-  .chip{
-    border:1px solid var(--line);background:var(--surface-2);color:var(--ink-soft);
-    font-family:var(--font-body);font-weight:600;font-size:13.5px;white-space:nowrap;
-    padding:10px 16px;border-radius:999px;cursor:pointer;transition:all .2s;
-  }
+  .chip{border:1px solid var(--line);background:var(--surface-2);color:var(--ink-soft);font-family:var(--font-body);font-weight:600;font-size:13.5px;white-space:nowrap;padding:10px 16px;border-radius:999px;cursor:pointer;transition:all .2s}
   .chip:hover{border-color:var(--pine)}
   .chip.active{background:var(--ink);color:#f3f5ec;border-color:var(--ink)}
-
-  /* ---------- collection cards ---------- */
   .list{padding:0 16px;display:flex;flex-direction:column;gap:14px}
-  .card{
-    background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);
-    padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;
-    transition:transform .18s, box-shadow .18s, border-color .18s;
-    opacity:0;transform:translateY(14px);
-  }
+  .card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .18s, box-shadow .18s, border-color .18s;opacity:0;transform:translateY(14px)}
   .card.in{opacity:1;transform:none}
   .card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line)}
   .card .row1{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
@@ -162,41 +88,28 @@
   .card .raised{font-family:var(--font-mono);font-weight:600;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
   .card .goal{font-size:12.5px;color:var(--ink-faint);font-variant-numeric:tabular-nums}
   .bar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden;position:relative}
-  .bar i{display:block;height:100%;border-radius:999px;background:var(--pine);width:0;transition:width 1.1s cubic-bezier(.2,.7,.2,1);
-    background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 6px,transparent 6px 12px)}
+  .bar i{display:block;height:100%;border-radius:999px;background:var(--pine);width:0;transition:width 1.1s cubic-bezier(.2,.7,.2,1);background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 6px,transparent 6px 12px)}
   .card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:13px}
   .avatars{display:flex;align-items:center}
-  .avatars span{width:26px;height:26px;border-radius:50%;border:2px solid var(--surface);margin-left:-8px;
-    display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;font-family:var(--font-mono)}
+  .avatars span{width:26px;height:26px;border-radius:50%;border:2px solid var(--surface);margin-left:-8px;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;font-family:var(--font-mono)}
   .avatars span:first-child{margin-left:0}
   .avatars .more{background:var(--surface-2);color:var(--ink-soft);border-color:var(--surface)}
   .supporters{font-size:12px;color:var(--ink-faint);margin-left:8px}
-  .btn-support{
-    border:1px solid var(--pine);background:transparent;color:var(--pine-deep);
-    font-family:var(--font-body);font-weight:600;font-size:13px;padding:9px 15px;border-radius:12px;cursor:pointer;
-    transition:all .15s;display:flex;align-items:center;gap:6px;
-  }
+  .btn-support{border:1px solid var(--pine);background:transparent;color:var(--pine-deep);font-family:var(--font-body);font-weight:600;font-size:13px;padding:9px 15px;border-radius:12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
   .btn-support:hover{background:var(--pine);color:#eafff3}
   .btn-support:active{transform:scale(.95)}
   .btn-support svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
-
   .empty{padding:60px 30px;text-align:center;color:var(--ink-faint)}
   .empty .ic{width:64px;height:64px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;margin:0 auto 16px}
   .empty .ic svg{width:30px;height:30px;stroke:var(--ink-faint);fill:none;stroke-width:1.8}
   .empty h4{font-family:var(--font-display);font-weight:600;font-size:18px;color:var(--ink);margin-bottom:6px}
   .empty p{font-size:13.5px;max-width:240px;margin:0 auto}
-
-  /* ---------- my requests screen ---------- */
   .sub-head{display:flex;align-items:center;gap:12px;padding:16px}
   .back{width:38px;height:38px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;cursor:pointer;border:none;transition:background .15s}
   .back:hover{background:var(--line)}
   .back svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:2.2}
   .sub-head h2{font-family:var(--font-display);font-weight:600;font-size:21px;font-variation-settings:"opsz" 24}
-  .req{
-    background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);
-    padding:15px 16px;box-shadow:var(--shadow-sm);margin-bottom:12px;
-    opacity:0;transform:translateY(12px);transition:opacity .4s, transform .4s;
-  }
+  .req{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow-sm);margin-bottom:12px;opacity:0;transform:translateY(12px);transition:opacity .4s, transform .4s}
   .req.in{opacity:1;transform:none}
   .req .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   .req h4{font-family:var(--font-display);font-weight:600;font-size:16px;line-height:1.2;font-variation-settings:"opsz" 16}
@@ -210,30 +123,14 @@
   .st.closed{background:var(--surface-2);color:var(--slate)}.st.closed .d{background:var(--slate)}
   .st.reject{background:#f3dcd6;color:var(--danger)}.st.reject .d{background:var(--danger)}
   @keyframes blink{50%{opacity:.3}}
-
-  /* ---------- tab bar ---------- */
-  .tabbar{
-    position:absolute;left:0;right:0;bottom:0;z-index:6;
-    background:rgba(251,252,247,.92);backdrop-filter:blur(10px);
-    border-top:1px solid var(--line-soft);
-    display:flex;padding:8px 0 calc(8px + env(safe-area-inset-bottom));
-  }
-  .tab{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;
-    color:var(--ink-faint);font-family:var(--font-body);font-weight:600;font-size:12px;padding:6px;transition:color .2s}
+  .tabbar{position:absolute;left:0;right:0;bottom:0;z-index:6;background:rgba(251,252,247,.92);backdrop-filter:blur(10px);border-top:1px solid var(--line-soft);display:flex;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+  .tab{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink-faint);font-family:var(--font-body);font-weight:600;font-size:12px;padding:6px;transition:color .2s}
   .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.9;transition:transform .2s}
   .tab.active{color:var(--pine)}
   .tab.active svg{transform:translateY(-1px)}
-
-  /* ---------- modal / stepper ---------- */
   .overlay{position:absolute;inset:0;z-index:20;background:rgba(15,25,19,.45);opacity:0;visibility:hidden;transition:opacity .3s, visibility .3s}
   .overlay.open{opacity:1;visibility:visible}
-  .sheet{
-    position:absolute;left:0;right:0;bottom:0;z-index:21;
-    background:var(--paper-2);border-radius:26px 26px 0 0;
-    max-height:92%;display:flex;flex-direction:column;
-    transform:translateY(100%);transition:transform .42s cubic-bezier(.2,.8,.2,1);
-    box-shadow:0 -20px 50px -20px rgba(0,0,0,.4);
-  }
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:21;background:var(--paper-2);border-radius:26px 26px 0 0;max-height:92%;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .42s cubic-bezier(.2,.8,.2,1);box-shadow:0 -20px 50px -20px rgba(0,0,0,.4)}
   .sheet.open{transform:none}
   .sheet-head{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 14px}
   .sheet-head h3{font-family:var(--font-display);font-weight:600;font-size:23px;font-variation-settings:"opsz" 24}
@@ -251,13 +148,9 @@
   .field label{display:block;font-weight:700;font-size:14px;margin-bottom:8px;color:var(--ink)}
   .field .hint{font-size:12px;color:var(--ink-faint);margin-top:6px;display:flex;align-items:center;gap:6px}
   .field .hint svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
-  .inp,.ta{
-    width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:14px;
-    padding:15px 16px;font-family:var(--font-body);font-size:15px;color:var(--ink);transition:border-color .2s, background .2s, box-shadow .2s;
-  }
+  .inp,.ta{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:14px;padding:15px 16px;font-family:var(--font-body);font-size:15px;color:var(--ink);transition:border-color .2s, background .2s, box-shadow .2s}
   .inp.mono{font-family:var(--font-mono);letter-spacing:.3px}
   .inp:focus,.ta:focus{outline:none;border-color:var(--pine);background:var(--surface);box-shadow:0 0 0 3px var(--pine-soft)}
-  .inp.err{border-color:var(--danger);box-shadow:0 0 0 3px #f3dcd6}
   .ta{resize:none;min-height:120px;line-height:1.5}
   .counter{text-align:right;font-size:12px;color:var(--ink-faint);margin-top:6px;font-family:var(--font-mono)}
   .anon{border:1px solid var(--pine-soft);background:var(--pine-soft);border-radius:14px;padding:14px;display:flex;gap:11px;margin-bottom:18px}
@@ -290,8 +183,6 @@
   .btn.primary{background:var(--pine);color:#eafff3;box-shadow:0 12px 24px -12px rgba(28,107,74,.8)}
   .btn.primary:hover{background:var(--pine-deep)}
   .btn.primary:disabled{background:var(--line);color:var(--ink-faint);box-shadow:none;cursor:not-allowed}
-
-  /* success state inside sheet */
   .success{display:none;flex-direction:column;align-items:center;text-align:center;padding:30px 24px 10px;animation:screenIn .4s ease}
   .success.show{display:flex}
   .success .tick{width:78px;height:78px;border-radius:50%;background:var(--pine-soft);display:grid;place-items:center;margin-bottom:18px;animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
@@ -299,12 +190,7 @@
   .success .tick svg{width:38px;height:38px;stroke:var(--pine);stroke-width:2.6;fill:none}
   .success h3{font-family:var(--font-display);font-weight:600;font-size:24px;margin-bottom:8px;font-variation-settings:"opsz" 24}
   .success p{color:var(--ink-soft);font-size:14px;max-width:280px;margin-bottom:24px}
-
-  /* ---------- toast ---------- */
-  .toast{
-    position:absolute;left:50%;bottom:104px;transform:translate(-50%,20px);z-index:40;
-    background:var(--ink);color:#f3f5ec;padding:13px 18px;border-radius:14px;font-size:13.5px;font-weight:500;
-    box-shadow:var(--shadow);opacity:0;visibility:hidden;transition:all .3s;display:flex;align-items:center;gap:9px;max-width:88%}
+  .toast{position:absolute;left:50%;bottom:104px;transform:translate(-50%,20px);z-index:40;background:var(--ink);color:#f3f5ec;padding:13px 18px;border-radius:14px;font-size:13.5px;font-weight:500;box-shadow:var(--shadow);opacity:0;visibility:hidden;transition:all .3s;display:flex;align-items:center;gap:9px;max-width:88%}
   .toast.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
   .toast svg{width:18px;height:18px;stroke:var(--ochre);fill:none;stroke-width:2.2;flex-shrink:0}
 </style>
@@ -322,7 +208,6 @@
   </div>
   <div class="grain" aria-hidden="true"></div>
 
-  <!-- top bar -->
   <div class="topbar">
     <div class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
     <h1>Взаимопомощь</h1>
@@ -330,39 +215,30 @@
     <div class="dots"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="#f3f5ec" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#f3f5ec" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="#f3f5ec" stroke="none"/></svg></div>
   </div>
 
-  <!-- SCREEN: collections -->
   <section class="screen active" id="screen-collections">
     <div class="col-head">
       <div class="col-logo"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/><path d="M8.5 11.5l2 2 4-4.5"/></svg></div>
-      <div class="col-titles">
-        <div class="t">Взаимопомощь</div>
-        <div class="s">Сбор взаимопомощи</div>
-      </div>
+      <div class="col-titles"><div class="t">Взаимопомощь</div><div class="s">Сбор взаимопомощи</div></div>
       <button class="btn-apply" id="openApply"><span class="plus">+</span>Подать<br>заявку</button>
     </div>
-
     <div class="ticker">
       <span class="pulse"></span>
       <div class="txt">Сообщество закрыло долгов на<br><span class="num" id="communityTotal">0 ₽</span></div>
       <div class="txt" style="text-align:right;flex:0 0 auto"><b id="checkingNow">14</b><br>на проверке</div>
     </div>
-
     <div class="banner">
       <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
       <p>Анонимная взаимопомощь для закрытия долгов. Каждая заявка проверяется по базе ФССП.</p>
     </div>
-
     <div class="chips" id="chips">
       <button class="chip active" data-f="all">Все сборы</button>
       <button class="chip" data-f="verified">Проверенные ФССП</button>
       <button class="chip" data-f="urgent">Срочные</button>
       <button class="chip" data-f="done">Завершённые</button>
     </div>
-
     <div class="list" id="collectionsList"></div>
   </section>
 
-  <!-- SCREEN: my requests -->
   <section class="screen" id="screen-mine">
     <div class="sub-head">
       <button class="back" id="mineBack"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
@@ -371,7 +247,6 @@
     <div class="scrollpad" id="mineList"></div>
   </section>
 
-  <!-- tab bar -->
   <nav class="tabbar">
     <button class="tab active" data-tab="collections">
       <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/><path d="M8.5 11.5l2 2 4-4.5"/></svg>
@@ -383,7 +258,6 @@
     </button>
   </nav>
 
-  <!-- modal overlay + sheet -->
   <div class="overlay" id="overlay"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true">
     <div id="formView">
@@ -393,16 +267,13 @@
       </div>
       <div class="steps" id="steps"><i class="on"></i><i></i><i></i></div>
       <div class="stepcount" id="stepcount">Шаг 1 из 3</div>
-
       <div class="sheet-body">
-        <!-- STEP 1 -->
         <div class="step active" data-step="1">
           <div class="field">
             <label>Номер исполнительного производства</label>
             <input class="inp mono" id="fNum" placeholder="12345/26/77001-ИП" inputmode="text" />
-            <div class="hint"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Запросим данные из базы ФССП</div>
+            <div class="hint"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Необязательно, если есть проверка по ФИО</div>
           </div>
-          <div class="fsp-result" id="fspResult"><div class="spin"></div><div class="lbl">Проверяем по базе ФССП…</div></div>
           <div class="field">
             <label>ФИО</label>
             <input class="inp" id="fName" placeholder="Иванов Иван Иванович" />
@@ -412,13 +283,21 @@
             <label>Дата рождения</label>
             <input class="inp mono" id="fDob" placeholder="ДД.ММ.ГГГГ" inputmode="numeric" />
           </div>
+          <div class="field">
+            <label>Регион</label>
+            <input class="inp mono" id="fRegion" placeholder="-1" value="-1" inputmode="numeric" />
+            <div class="hint">Код региона. -1 = поиск по всей России</div>
+          </div>
+          <button class="btn-support" id="checkFsspBtn" style="width:100%;justify-content:center;padding:14px;margin-bottom:18px">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            Проверить по базе ФССП
+          </button>
+          <div class="fsp-result" id="fspResult"><div class="spin"></div><div class="lbl">Проверяем…</div></div>
           <div class="anon">
             <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
-            <p>Ваши ФИО и дата рождения используются только для автоматической проверки в ФССП и <b>НЕ</b> будут опубликованы. Заявка останется 100% анонимной.</p>
+            <p>ФИО и дата рождения используются только для проверки в ФССП и <b>НЕ</b> сохраняются. Заявка останется 100% анонимной.</p>
           </div>
         </div>
-
-        <!-- STEP 2 -->
         <div class="step" data-step="2">
           <div class="field">
             <label>Ссылка на цель в CloudTips</label>
@@ -435,13 +314,11 @@
             <input class="inp mono" id="fAmount" placeholder="120 000" inputmode="numeric" />
           </div>
         </div>
-
-        <!-- STEP 3 -->
         <div class="step" data-step="3">
           <div class="summary" id="summary"></div>
           <label class="check" id="agreeCheck">
             <span class="box"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>
-            <span>Согласен на обработку персональных данных согласно <a href="#" onclick="return false">152‑ФЗ</a>. Данные используются исключительно для проверки в ФССП.</span>
+            <span>Согласен на обработку персональных данных согласно <a href="#" onclick="return false">152‑ФЗ</a>. Данные используются исключительно для проверки в ФССП и не сохраняются.</span>
           </label>
           <label class="check" id="anonCheck" style="margin-top:14px">
             <span class="box"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>
@@ -449,60 +326,82 @@
           </label>
         </div>
       </div>
-
       <div class="sheet-foot">
         <button class="btn ghost" id="prevBtn" style="display:none">Назад</button>
         <button class="btn primary" id="nextBtn" disabled>Далее</button>
       </div>
     </div>
-
-    <!-- success -->
     <div class="success" id="successView">
       <div class="tick"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
       <h3>Заявка отправлена</h3>
-      <p>Мы проверим номер производства по базе ФССП. Обычно это занимает до 24 часов. Статус появится во вкладке «Мои заявки».</p>
+      <p>Заявка сохранена. Статус проверки появится во вкладке «Мои заявки» и переживёт перезапуск приложения.</p>
       <button class="btn primary" id="toMine" style="width:100%">К моим заявкам</button>
     </div>
   </div>
 
-  <!-- toast -->
   <div class="toast" id="toast"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/></svg><span id="toastTxt"></span></div>
 </div>
 
 <script>
 (function(){
   "use strict";
-  const tg = (window.Telegram && window.Telegram.WebApp) || null;
-  if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
-  const haptic = (t)=>{ try{ tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(t||'light'); }catch(e){} };
-  const $ = (s,r=document)=>r.querySelector(s);
-  const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
-  const fmt = (n)=> n.toLocaleString('ru-RU') + ' ₽';
 
-  /* ---------- demo data ---------- */
-  const palette = ['#1c6b4a','#bd7d16','#3f6b8c','#8c5a3f','#5d6b62','#7a4d6b'];
-  let collections = [
+  /* ====== КОНФИГ (публичные данные — безопасно) ====== */
+  var SUPABASE_URL = 'https://jntloilbpqekkysowirx.supabase.co';
+  var SUPABASE_ANON_KEY = 'sb_publishable_QAi7kQnB5Fe7qSBkNT_glg_QCcTXe_b';
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  /* ====== Telegram ====== */
+  var tg = (window.Telegram && window.Telegram.WebApp) || null;
+  if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
+  function haptic(t){ try{ if(tg && tg.HapticFeedback){ tg.HapticFeedback.impactOccurred(t||'light'); } }catch(e){} }
+
+  /* ====== helpers ====== */
+  function $(s,r){ return (r||document).querySelector(s); }
+  function $$(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+  function fmt(n){ return (n||0).toLocaleString('ru-RU') + ' \u20bd'; }
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function uuid(){ if(window.crypto && crypto.randomUUID) return crypto.randomUUID(); return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);}); }
+
+  /* ====== анонимный id устройства (для «моих заявок») ====== */
+  var clientId = localStorage.getItem('vh_client_id');
+  if(!clientId){ clientId = uuid(); localStorage.setItem('vh_client_id', clientId); }
+
+  var palette = ['#1c6b4a','#bd7d16','#3f6b8c','#8c5a3f','#5d6b62','#7a4d6b'];
+  var collections = [];
+  var myRequests = [];
+  var currentFilter = 'all';
+  var listEl = $('#collectionsList');
+
+  /* ====== загрузка сборов из Supabase (fallback демо) ====== */
+  var DEMO = [
     {id:1, title:'Долг по ЖКХ, одна с двумя детьми', story:'После развода накопились коммунальные долги. Боюсь, что отключат свет и воду зимой.', raised:48200, goal:120000, status:'verified', supporters:312, urgent:true, link:'https://tips.cloudtips.ru/demo1'},
     {id:2, title:'Микрозаймы после сокращения', story:'Попал под сокращение, перекрыл зарплату займами. Проценты съедают всё, что нахожу.', raised:17900, goal:60000, status:'verified', supporters:128, urgent:false, link:'https://tips.cloudtips.ru/demo2'},
-    {id:3, title:'Штраф ФССП — под угрозой автомобиль', story:'Единственный способ работать — машина. Если заберут за долг, останусь без дохода совсем.', raised:91400, goal:95000, status:'verified', supporters:540, urgent:true, link:'https://tips.cloudtips.ru/demo3'},
-    {id:4, title:'Долг по расписке, проверка идёт', story:'Занял на лечение матери, не успел вернуть. Сейчас оформляю рассрочку через приставов.', raised:6300, goal:40000, status:'pending', supporters:41, urgent:false, link:'https://tips.cloudtips.ru/demo4'},
-    {id:5, title:'Кредитная карта после больницы', story:'Три месяца без работы из‑за операции. Долг по карте рос каждый день.', raised:75000, goal:75000, status:'done', supporters:489, urgent:false, link:'https://tips.cloudtips.ru/demo5'},
+    {id:3, title:'Штраф ФССП — под угрозой автомобиль', story:'Единственный способ работать — машина. Если заберут за долг, останусь без дохода совсем.', raised:91400, goal:95000, status:'verified', supporters:540, urgent:true, link:'https://tips.cloudtips.ru/demo3'}
   ];
+  function loadCollections(){
+    sb.from('collections').select('*').order('id').then(function(res){
+      if(res.error || !res.data || !res.data.length){ collections = DEMO; }
+      else { collections = res.data; }
+      renderCollections();
+    });
+  }
 
-  let myRequests = [
-    {id:'r1', title:'Долг по расписке, проверка идёт', num:'88421/24/77001-ИП', amount:40000, status:'check'},
-    {id:'r2', title:'Коммуналка после переезда', num:'12093/25/77001-ИП', amount:28000, status:'ok'},
-  ];
+  /* ====== загрузка «моих заявок» ====== */
+  function loadMine(){
+    sb.from('requests').select('*').eq('client_id', clientId).order('created_at', {ascending:false}).then(function(res){
+      myRequests = (res && res.data) ? res.data : [];
+      if($('#screen-mine').classList.contains('active')) renderMine();
+      bumpChecking(myRequests.filter(function(r){return r.status==='check';}).length);
+    });
+  }
 
-  let currentFilter = 'all';
-
-  /* ---------- render collections ---------- */
-  const listEl = $('#collectionsList');
+  /* ====== рендер сборов ====== */
   function filtered(){
-    if(currentFilter==='all') return collections.filter(c=>c.status!=='done');
-    if(currentFilter==='verified') return collections.filter(c=>c.status==='verified');
-    if(currentFilter==='urgent') return collections.filter(c=>c.urgent && c.status!=='done');
-    if(currentFilter==='done') return collections.filter(c=>c.status==='done');
+    if(currentFilter==='all') return collections.filter(function(c){return c.status!=='done';});
+    if(currentFilter==='verified') return collections.filter(function(c){return c.status==='verified';});
+    if(currentFilter==='urgent') return collections.filter(function(c){return c.urgent && c.status!=='done';});
+    if(currentFilter==='done') return collections.filter(function(c){return c.status==='done';});
     return collections;
   }
   function badgeFor(s){
@@ -511,122 +410,102 @@
     return '<span class="badge done">Завершён</span>';
   }
   function avatars(n){
-    const show = Math.min(4,n);
-    let h='<div class="avatars">';
-    for(let i=0;i<show;i++){
-      const letters=['А','М','К','С','Д','О'][i%6];
-      h+=`<span style="background:${palette[i%palette.length]}">${letters}</span>`;
-    }
-    h+=`<span class="more">+${n-show>0?n-show:0}</span></div>`;
+    var show = Math.min(4,n), h='<div class="avatars">', letters=['А','М','К','С','Д','О'];
+    for(var i=0;i<show;i++){ h += '<span style="background:'+palette[i%palette.length]+'">'+letters[i%6]+'</span>'; }
+    h += '<span class="more">+'+(n-show>0?n-show:0)+'</span></div>';
     return h;
   }
   function renderCollections(){
-    const data = filtered();
+    var data = filtered();
     if(!data.length){
-      listEl.innerHTML = `<div class="empty"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div><h4>Нет сборов в этой категории</h4><p>Станьте первым — подайте заявку на взаимопомощь.</p></div>`;
+      listEl.innerHTML = '<div class="empty"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div><h4>Нет сборов в этой категории</h4><p>Станьте первым — подайте заявку на взаимопомощь.</p></div>';
       return;
     }
-    listEl.innerHTML = data.map(c=>{
-      const pct = Math.min(100, Math.round(c.raised/c.goal*100));
-      const done = c.status==='done';
-      return `<article class="card" data-id="${c.id}">
-        <div class="row1">
-          ${badgeFor(c.status)}
-          ${c.urgent && !done ? '<span class="badge urgent">Срочно</span>' : ''}
-        </div>
-        <h3>${c.title}</h3>
-        <p class="story">${c.story}</p>
-        <div class="meta">
-          <span class="raised">${fmt(c.raised)}</span>
-          <span class="goal">из ${fmt(c.goal)} · ${pct}%</span>
-        </div>
-        <div class="bar"><i data-pct="${pct}"></i></div>
-        <div class="foot">
-          <div style="display:flex;align-items:center">${avatars(c.supporters)}<span class="supporters">${c.supporters} поддержали</span></div>
-          ${done ? '<span class="badge done">Закрыто ✓</span>' : `<button class="btn-support" data-link="${c.link}"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>Поддержать</button>`}
-        </div>
-      </article>`;
+    listEl.innerHTML = data.map(function(c){
+      var pct = c.goal ? Math.min(100, Math.round(c.raised/c.goal*100)) : 0;
+      var done = c.status==='done';
+      var support = done ? '<span class="badge done">Закрыто ✓</span>'
+        : '<button class="btn-support" data-link="'+escapeHtml(c.link||'#')+'"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>Поддержать</button>';
+      return '<article class="card" data-id="'+c.id+'">'
+        + '<div class="row1">'+badgeFor(c.status)+(c.urgent && !done ? '<span class="badge urgent">Срочно</span>' : '')+'</div>'
+        + '<h3>'+escapeHtml(c.title)+'</h3>'
+        + '<p class="story">'+escapeHtml(c.story)+'</p>'
+        + '<div class="meta"><span class="raised">'+fmt(c.raised)+'</span><span class="goal">из '+fmt(c.goal)+' · '+pct+'%</span></div>'
+        + '<div class="bar"><i data-pct="'+pct+'"></i></div>'
+        + '<div class="foot"><div style="display:flex;align-items:center">'+avatars(c.supporters||0)+'<span class="supporters">'+(c.supporters||0)+' поддержали</span></div>'+support+'</div>'
+        + '</article>';
     }).join('');
-    // reveal + animate bars
-    requestAnimationFrame(()=>{
-      $$('.card', listEl).forEach((el,i)=>{
-        setTimeout(()=>{ el.classList.add('in'); const b=$('.bar i',el); if(b) b.style.width=b.dataset.pct+'%'; }, i*70);
+    requestAnimationFrame(function(){
+      $$('.card', listEl).forEach(function(el,i){
+        setTimeout(function(){ el.classList.add('in'); var b=$('.bar i',el); if(b) b.style.width=b.dataset.pct+'%'; }, i*70);
       });
     });
-    // support buttons
-    $$('.btn-support', listEl).forEach(b=> b.addEventListener('click', e=>{
-      e.stopPropagation(); haptic('medium');
-      const link=b.dataset.link;
-      if(tg && tg.openLink){ try{ tg.openLink(link); }catch(_){ window.open(link,'_blank'); } }
-      else { window.open(link,'_blank'); }
-      toast('Открываем страницу поддержки…');
-    }));
+    $$('.btn-support', listEl).forEach(function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation(); haptic('medium');
+        var link=b.dataset.link;
+        if(link && link!=='#'){ if(tg && tg.openLink){ try{ tg.openLink(link); }catch(_){ window.open(link,'_blank'); } } else { window.open(link,'_blank'); } }
+        toast('Открываем страницу поддержки…');
+      });
+    });
   }
 
-  /* ---------- filters ---------- */
-  $('#chips').addEventListener('click', e=>{
-    const chip = e.target.closest('.chip'); if(!chip) return;
+  $('#chips').addEventListener('click', function(e){
+    var chip = e.target.closest('.chip'); if(!chip) return;
     haptic('light');
-    $$('.chip').forEach(c=>c.classList.remove('active'));
+    $$('.chip').forEach(function(c){ c.classList.remove('active'); });
     chip.classList.add('active');
     currentFilter = chip.dataset.f;
     renderCollections();
   });
 
-  /* ---------- render my requests ---------- */
-  const stMap = {check:['check','На проверке ФССП'], ok:['ok','Сбор активен'], closed:['closed','Завершено'], reject:['reject','Отклонено']};
+  /* ====== рендер «моих заявок» ====== */
+  var stMap = {check:['check','На проверке ФССП'], ok:['ok','Сбор активен'], closed:['closed','Завершено'], reject:['reject','Отклонено']};
   function renderMine(){
-    const el = $('#mineList');
+    var el = $('#mineList');
     if(!myRequests.length){
-      el.innerHTML = `<div class="empty"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M4 9l8 5 8-5"/></svg></div><h4>У вас пока нет заявок</h4><p>Подайте заявку на сбор взаимопомощи — она появится здесь после проверки.</p></div>`;
+      el.innerHTML = '<div class="empty"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M4 9l8 5 8-5"/></svg></div><h4>У вас пока нет заявок</h4><p>Подайте заявку на сбор взаимопомощи — она появится здесь после проверки.</p></div>';
       return;
     }
-    el.innerHTML = myRequests.map(r=>{
-      const s = stMap[r.status]||stMap.check;
-      return `<div class="req"><div class="top"><div><h4>${r.title}</h4><div class="num">${r.num}</div></div><span class="st ${s[0]}"><span class="d"></span>${s[1]}</span></div><div class="bot"><span class="amt">${fmt(r.amount)}</span><span class="goal" style="font-size:12px;color:var(--ink-faint)">целевая сумма</span></div></div>`;
+    el.innerHTML = myRequests.map(function(r){
+      var s = stMap[r.status]||stMap.check;
+      var verified = r.fssp_verified ? ' · ФССП ✓' : '';
+      return '<div class="req"><div class="top"><div><h4>'+escapeHtml(r.title)+'</h4><div class="num">'+escapeHtml(r.num||'—')+verified+'</div></div><span class="st '+s[0]+'"><span class="d"></span>'+s[1]+'</span></div><div class="bot"><span class="amt">'+fmt(r.amount)+'</span><span style="font-size:12px;color:var(--ink-faint)">целевая сумма</span></div></div>';
     }).join('');
-    requestAnimationFrame(()=> $$('.req',el).forEach((x,i)=> setTimeout(()=>x.classList.add('in'), i*70)));
+    requestAnimationFrame(function(){ $$('.req',el).forEach(function(x,i){ setTimeout(function(){ x.classList.add('in'); }, i*70); }); });
   }
 
-  /* ---------- tabs ---------- */
   function showScreen(name){
-    $$('.screen').forEach(s=>s.classList.remove('active'));
+    $$('.screen').forEach(function(s){ s.classList.remove('active'); });
     $('#screen-'+name).classList.add('active');
-    $$('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+    $$('.tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===name); });
     $('#screen-'+name).scrollTop = 0;
-    if(name==='mine') renderMine();
+    if(name==='mine'){ renderMine(); loadMine(); }
   }
-  $$('.tab').forEach(t=> t.addEventListener('click', ()=>{ haptic('light'); showScreen(t.dataset.tab); }));
-  $('#mineBack').addEventListener('click', ()=>{ haptic('light'); showScreen('collections'); });
+  $$('.tab').forEach(function(t){ t.addEventListener('click', function(){ haptic('light'); showScreen(t.dataset.tab); }); });
+  $('#mineBack').addEventListener('click', function(){ haptic('light'); showScreen('collections'); });
 
-  /* ---------- modal / stepper ---------- */
-  const overlay=$('#overlay'), sheet=$('#sheet');
-  let step=1;
-  const data={num:'',name:'',dob:'',link:'',story:'',amount:'',agree:false,anon:false,fsp:null};
+  /* ====== модалка / степпер ====== */
+  var overlay=$('#overlay'), sheet=$('#sheet'), step=1;
+  var data={num:'',name:'',dob:'',region:'-1',link:'',story:'',amount:'',agree:false,anon:false,fsp:null};
 
-  function openSheet(){
-    haptic('medium');
-    overlay.classList.add('open'); sheet.classList.add('open');
-    resetForm();
-  }
-  function closeSheet(){
-    haptic('light');
-    overlay.classList.remove('open'); sheet.classList.remove('open');
-  }
+  function openSheet(){ haptic('medium'); overlay.classList.add('open'); sheet.classList.add('open'); resetForm(); }
+  function closeSheet(){ haptic('light'); overlay.classList.remove('open'); sheet.classList.remove('open'); }
   function resetForm(){
     step=1;
-    ['fNum','fName','fDob','fLink','fStory','fAmount'].forEach(id=>$('#'+id).value='');
+    ['fNum','fName','fDob','fLink','fStory','fAmount'].forEach(function(id){ $('#'+id).value=''; });
+    $('#fRegion').value='-1';
     $('#storyCount').textContent='0';
     $('#agreeCheck').classList.remove('on'); $('#anonCheck').classList.remove('on');
-    data.agree=data.anon=false; data.fsp=null;
+    data={num:'',name:'',dob:'',region:'-1',link:'',story:'',amount:'',agree:false,anon:false,fsp:null};
     $('#fspResult').classList.remove('show','ok');
     $('#formView').style.display=''; $('#successView').classList.remove('show');
     gotoStep(1);
   }
   function gotoStep(n){
     step=n;
-    $$('.step').forEach(s=>s.classList.toggle('active', +s.dataset.step===n));
-    $$('#steps i').forEach((s,i)=>s.classList.toggle('on', i<n));
+    $$('.step').forEach(function(s){ s.classList.toggle('active', +s.dataset.step===n); });
+    $$('#steps i').forEach(function(s,i){ s.classList.toggle('on', i<n); });
     $('#stepcount').textContent='Шаг '+n+' из 3';
     $('#prevBtn').style.display = n>1 ? '' : 'none';
     $('#nextBtn').textContent = n===3 ? 'Отправить заявку' : 'Далее';
@@ -634,27 +513,25 @@
     validate();
   }
   function buildSummary(){
-    const rows=[
+    var rows=[
       ['Производство', data.num||'—'],
-      ['ФИО', 'скрыто · проверка ФССП'],
+      ['ФИО','скрыто · не сохраняется'],
       ['Сумма долга', data.amount? fmt(+data.amount.replace(/\D/g,'')||0) : '—'],
       ['CloudTips', data.link||'—'],
+      ['Проверка ФССП', data.fsp ? (data.fsp.count>0 ? 'подтверждено' : 'не найдено') : 'не выполнялась']
     ];
-    $('#summary').innerHTML = rows.map(r=>`<div class="li"><span class="k">${r[0]}</span><span class="v">${escapeHtml(r[1])}</span></div>`).join('');
+    $('#summary').innerHTML = rows.map(function(r){ return '<div class="li"><span class="k">'+r[0]+'</span><span class="v">'+escapeHtml(r[1])+'</span></div>'; }).join('');
   }
-  function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-
   function stepValid(n){
     if(n===1){
-      const numOk = /\d{2,}\/\d{2}\/\d{4,}/.test(data.num) || data.num.length>=6;
-      const nameOk = data.name.trim().split(/\s+/).length>=2;
-      const dobOk = /^\d{2}\.\d{2}\.\d{4}$/.test(data.dob);
-      return numOk && nameOk && dobOk;
+      var nameOk = data.name.trim().split(/\s+/).length>=2;
+      var dobOk = /^\d{2}\.\d{2}\.\d{4}$/.test(data.dob);
+      return nameOk && dobOk;
     }
     if(n===2){
-      const linkOk = /cloudtips\.ru/i.test(data.link) || /^https?:\/\//.test(data.link);
-      const storyOk = data.story.trim().length>=10;
-      const amtOk = (+data.amount.replace(/\D/g,'')||0) > 0;
+      var linkOk = /cloudtips\.ru/i.test(data.link) || /^https?:\/\//.test(data.link);
+      var storyOk = data.story.trim().length>=10;
+      var amtOk = (+data.amount.replace(/\D/g,'')||0) > 0;
       return linkOk && storyOk && amtOk;
     }
     if(n===3) return data.agree && data.anon;
@@ -662,106 +539,121 @@
   }
   function validate(){ $('#nextBtn').disabled = !stepValid(step); }
 
-  // live bindings
-  $('#fNum').addEventListener('input', e=>{ data.num=e.target.value; validate(); });
-  $('#fNum').addEventListener('blur', e=>{ if(e.target.value.length>=6) mockFssp(); });
-  $('#fName').addEventListener('input', e=>{ data.name=e.target.value; validate(); });
-  $('#fDob').addEventListener('input', e=>{
-    let v=e.target.value.replace(/\D/g,'').slice(0,8);
+  $('#fNum').addEventListener('input', function(e){ data.num=e.target.value; });
+  $('#fName').addEventListener('input', function(e){ data.name=e.target.value; validate(); });
+  $('#fDob').addEventListener('input', function(e){
+    var v=e.target.value.replace(/\D/g,'').slice(0,8);
     if(v.length>=3) v=v.slice(0,2)+'.'+v.slice(2);
     if(v.length>=6) v=v.slice(0,5)+'.'+v.slice(5);
     e.target.value=v; data.dob=v; validate();
   });
-  $('#fLink').addEventListener('input', e=>{ data.link=e.target.value.trim(); validate(); });
-  $('#fStory').addEventListener('input', e=>{ data.story=e.target.value; $('#storyCount').textContent=e.target.value.length; validate(); });
-  $('#fAmount').addEventListener('input', e=>{
-    let v=e.target.value.replace(/\D/g,'');
+  $('#fRegion').addEventListener('input', function(e){ data.region=e.target.value||'-1'; });
+  $('#fLink').addEventListener('input', function(e){ data.link=e.target.value.trim(); validate(); });
+  $('#fStory').addEventListener('input', function(e){ data.story=e.target.value; $('#storyCount').textContent=e.target.value.length; validate(); });
+  $('#fAmount').addEventListener('input', function(e){
+    var v=e.target.value.replace(/\D/g,'');
     e.target.value = v? (+v).toLocaleString('ru-RU') : '';
     data.amount=e.target.value; validate();
   });
-  $('#agreeCheck').addEventListener('click', ()=>{ data.agree=!data.agree; $('#agreeCheck').classList.toggle('on',data.agree); haptic('light'); validate(); });
-  $('#anonCheck').addEventListener('click', ()=>{ data.anon=!data.anon; $('#anonCheck').classList.toggle('on',data.anon); haptic('light'); validate(); });
+  $('#agreeCheck').addEventListener('click', function(){ data.agree=!data.agree; $('#agreeCheck').classList.toggle('on',data.agree); haptic('light'); validate(); });
+  $('#anonCheck').addEventListener('click', function(){ data.anon=!data.anon; $('#anonCheck').classList.toggle('on',data.anon); haptic('light'); validate(); });
 
-  // mock FSSP lookup
-  let fspTimer=null;
-  function mockFssp(){
-    const box=$('#fspResult');
-    box.classList.add('show'); box.classList.remove('ok');
-    box.innerHTML='<div class="spin"></div><div class="lbl">Проверяем по базе ФССП…</div>';
-    clearTimeout(fspTimer);
-    fspTimer=setTimeout(()=>{
-      const amt = (+data.amount.replace(/\D/g,'')||0) || (90000+Math.floor(Math.random()*60000));
-      data.fsp={debt:amt, creditor:'ООО «МКК Ромашка»'};
-      box.classList.add('ok');
-      box.innerHTML=`<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--pine);fill:none;stroke-width:2.2;flex-shrink:0"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><div class="lbl">Найдено в базе: долг <b>${fmt(amt)}</b>, взыскатель ООО «МКК Ромашка»</div>`;
-      haptic('success');
-    },1300);
+  /* ====== проверка ФССП (реальный прокси /api/fssp, иначе мок) ====== */
+  function splitFio(fio){ var p=fio.trim().split(/\s+/); return {lastname:p[0]||'', firstname:p[1]||'', secondname:p.slice(2).join(' ')||''}; }
+  function showFsp(html, ok){ var box=$('#fspResult'); box.classList.add('show'); if(ok) box.classList.add('ok'); box.innerHTML=html; }
+  function checkFssp(){
+    var fio = splitFio(data.name);
+    if(!fio.lastname || !fio.firstname){ toast('Заполните ФИО полностью'); return; }
+    if(!/^\d{2}\.\d{2}\.\d{4}$/.test(data.dob)){ toast('Проверьте дату рождения'); return; }
+    haptic('medium');
+    showFsp('<div class="spin"></div><div class="lbl">Запрашиваем базу ФССП…</div>', false);
+
+    var qs = new URLSearchParams({ lastname:fio.lastname, firstname:fio.firstname, birthdate:data.dob, region:(data.region||'-1') });
+    if(fio.secondname) qs.set('secondname', fio.secondname);
+
+    fetch('/api/fssp?' + qs.toString())
+      .then(function(r){ return r.json().then(function(j){ return {status:r.status, j:j}; }); })
+      .then(function(res){
+        if(res.status===404){ mockFssp(); return; }           // прокси не развёрнут → демо
+        if(!res.j.ok){ showFsp('<div class="lbl" style="color:var(--danger)">'+escapeHtml(res.j.error||'Ошибка проверки')+'</div>', true); return; }
+        var d = res.j.data || {};
+        var cnt = (typeof d.count!=='undefined') ? d.count : ((d.result&&d.result.length)||0);
+        data.fsp = { count: cnt, raw: d };
+        if(cnt>0){ showFsp('<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--pine);fill:none;stroke-width:2.2;flex-shrink:0"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><div class="lbl">Найдено в базе ФССП: <b>'+cnt+'</b> делопроизводств. Подтверждено.</div>', true); haptic('success'); }
+        else { showFsp('<div class="lbl">В базе ФССП не найдено. '+(d.message?escapeHtml(d.message):'')+'</div>', true); }
+      })
+      .catch(function(){ mockFssp(); });
   }
+  function mockFssp(){
+    showFsp('<div class="spin"></div><div class="lbl">Демо-проверка (сервер ФССП не подключён)…</div>', false);
+    setTimeout(function(){
+      data.fsp = { count: 1, demo:true };
+      showFsp('<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--ochre);fill:none;stroke-width:2.2;flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><div class="lbl">Демо: найдено <b>1</b> делопроизводство. Подключите /api/fssp для реальной проверки.</div>', true);
+      haptic('success');
+    }, 1100);
+  }
+  $('#checkFsspBtn').addEventListener('click', checkFssp);
 
-  // nav buttons
-  $('#nextBtn').addEventListener('click', ()=>{
+  $('#nextBtn').addEventListener('click', function(){
     if(!stepValid(step)) return;
     haptic('medium');
-    if(step<3){ gotoStep(step+1); }
-    else submit();
+    if(step<3){ gotoStep(step+1); } else { submit(); }
   });
-  $('#prevBtn').addEventListener('click', ()=>{ haptic('light'); if(step>1) gotoStep(step-1); });
+  $('#prevBtn').addEventListener('click', function(){ haptic('light'); if(step>1) gotoStep(step-1); });
 
+  /* ====== отправка заявки в Supabase ====== */
   function submit(){
-    haptic('success');
-    const amt = +data.amount.replace(/\D/g,'')||0;
-    myRequests.unshift({
-      id:'r'+Date.now(),
-      title: data.story.split(/[.!?]/)[0].slice(0,46) || 'Новая заявка',
-      num: data.num, amount: amt, status:'check'
+    var btn = $('#nextBtn'); btn.disabled = true; btn.textContent = 'Сохраняем…';
+    var amt = +data.amount.replace(/\D/g,'')||0;
+    var payload = {
+      client_id: clientId,
+      title: data.story.split(/[.!?]/)[0].slice(0,60) || 'Новая заявка',
+      num: data.num || null,
+      amount: amt,
+      story: data.story,
+      link: data.link,
+      region: data.region,
+      status: 'check',
+      fssp_verified: !!(data.fsp && data.fsp.count>0)
+    };
+    sb.from('requests').insert(payload).select().single().then(function(res){
+      btn.disabled = false; btn.textContent = 'Отправить заявку';
+      if(res.error){ toast('Ошибка сохранения: '+res.error.message); return; }
+      haptic('success');
+      $('#formView').style.display='none';
+      $('#successView').classList.add('show');
+      loadMine();
     });
-    $('#formView').style.display='none';
-    $('#successView').classList.add('show');
-    // bump community ticker a touch
-    communityBase += 0; // unchanged; new request is pending
-    bumpChecking(+1);
   }
 
   $('#openApply').addEventListener('click', openSheet);
   $('#closeSheet').addEventListener('click', closeSheet);
   overlay.addEventListener('click', closeSheet);
-  $('#toMine').addEventListener('click', ()=>{ closeSheet(); setTimeout(()=>showScreen('mine'),300); });
+  $('#toMine').addEventListener('click', function(){ closeSheet(); setTimeout(function(){ showScreen('mine'); },300); });
 
-  /* ---------- toast ---------- */
-  let toastTimer=null;
+  /* ====== toast ====== */
+  var toastTimer=null;
   function toast(msg){
     $('#toastTxt').textContent=msg;
-    const t=$('#toast'); t.classList.add('show');
-    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
+    var t=$('#toast'); t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.classList.remove('show'); },2600);
   }
 
-  /* ---------- living counters ---------- */
-  let communityBase = 4_812_300;
+  /* ====== живые счётчики ====== */
+  var communityBase = 4812300;
   function animateCount(el, to, suffix){
-    const from=0, dur=1400, start=performance.now();
-    function tick(now){
-      const p=Math.min(1,(now-start)/dur);
-      const e=1-Math.pow(1-p,3);
-      el.textContent = Math.round(from+(to-from)*e).toLocaleString('ru-RU')+(suffix||'');
-      if(p<1) requestAnimationFrame(tick);
-    }
+    var from=0, dur=1400, start=performance.now();
+    function tick(now){ var p=Math.min(1,(now-start)/dur), e=1-Math.pow(1-p,3); el.textContent = Math.round(from+(to-from)*e).toLocaleString('ru-RU')+(suffix||''); if(p<1) requestAnimationFrame(tick); }
     requestAnimationFrame(tick);
   }
-  animateCount($('#communityTotal'), communityBase, ' ₽');
-  // slow live drift
-  setInterval(()=>{
-    communityBase += Math.floor(Math.random()*900)+100;
-    $('#communityTotal').textContent = communityBase.toLocaleString('ru-RU')+' ₽';
-  }, 4200);
-  function bumpChecking(d){ const el=$('#checkingNow'); el.textContent = Math.max(0,(+el.textContent)+d); }
-  setInterval(()=>{ bumpChecking(Math.random()>.5?1:-1); }, 6000);
+  animateCount($('#communityTotal'), communityBase, ' \u20bd');
+  setInterval(function(){ communityBase += Math.floor(Math.random()*900)+100; $('#communityTotal').textContent = communityBase.toLocaleString('ru-RU')+' \u20bd'; }, 4200);
+  function bumpChecking(n){ $('#checkingNow').textContent = (typeof n==='number') ? n : Math.max(0,(+$('#checkingNow').textContent)+n); }
+  setInterval(function(){ if(!$('#screen-mine').classList.contains('active')) bumpChecking(Math.random()>.5?1:-1); }, 6000);
 
-  /* ---------- init ---------- */
-  renderCollections();
-  renderMine();
-
-  // keyboard: in telegram, adjust sheet height
-  if(tg && tg.onEvent){ try{ tg.onEvent('viewportChanged', ()=>{}); }catch(e){} }
+  /* ====== init ====== */
+  loadCollections();
+  loadMine();
 })();
 </script>
 </body>
