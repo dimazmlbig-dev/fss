@@ -307,3 +307,390 @@
     box-shadow:var(--shadow);opacity:0;visibility:hidden;transition:all .3s;display:flex;align-items:center;gap:9px;max-width:88%}
   .toast.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
   .toast svg{width:18px;h
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="ambient" aria-hidden="true">
+    <svg viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice">
+      <path d="M40 300 C40 160 160 40 300 40 C440 40 560 160 560 300 C560 440 440 560 300 560 C160 560 40 440 40 300Z"/>
+      <path d="M90 300 C90 185 185 90 300 90 C415 90 510 185 510 300 C510 415 415 510 300 510 C185 510 90 415 90 300Z"/>
+      <path d="M140 300 C140 212 212 140 300 140 C388 140 460 212 460 300 C460 388 388 460 300 460 C212 460 140 388 140 300Z"/>
+      <path d="M190 300 C190 239 239 190 300 190 C361 190 410 239 410 300 C410 361 361 410 300 410 C239 410 190 361 190 300Z"/>
+      <path d="M240 300 C240 267 267 240 300 240 C333 240 360 267 360 300 C360 333 333 360 300 360 C267 360 240 333 240 300Z"/>
+    </svg>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+    <h1>Взаимопомощь</h1>
+    <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    <div class="dots"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="#f3f5ec" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#f3f5ec" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="#f3f5ec" stroke="none"/></svg></div>
+  </div>
+
+  <!-- SCREEN: collections -->
+  <section class="screen active" id="screen-collections">
+    <div class="col-head">
+      <div class="col-logo"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/><path d="M8.5 11.5l2 2 4-4.5"/></svg></div>
+      <div class="col-titles">
+        <div class="t">Взаимопомощь</div>
+        <div class="s">Сбор взаимопомощи</div>
+      </div>
+      <button class="btn-apply" id="openApply"><span class="plus">+</span>Подать<br>заявку</button>
+    </div>
+
+    <div class="ticker">
+      <span class="pulse"></span>
+      <div class="txt">Сообщество закрыло долгов на<br><span class="num" id="communityTotal">0 ₽</span></div>
+      <div class="txt" style="text-align:right;flex:0 0 auto"><b id="checkingNow">14</b><br>на проверке</div>
+    </div>
+
+    <div class="banner">
+      <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+      <p>Анонимная взаимопомощь для закрытия долгов. Каждая заявка проверяется по базе ФССП.</p>
+    </div>
+
+    <div class="chips" id="chips">
+      <button class="chip active" data-f="all">Все сборы</button>
+      <button class="chip" data-f="verified">Проверенные ФССП</button>
+      <button class="chip" data-f="urgent">Срочные</button>
+      <button class="chip" data-f="done">Завершённые</button>
+    </div>
+
+    <div class="list" id="collectionsList"></div>
+  </section>
+
+  <!-- SCREEN: my requests -->
+  <section class="screen" id="screen-mine">
+    <div class="sub-head">
+      <button class="back" id="mineBack"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <h2>Мои заявки</h2>
+    </div>
+    <div class="scrollpad" id="mineList"></div>
+  </section>
+
+  <!-- tab bar -->
+  <nav class="tabbar">
+    <button class="tab active" data-tab="collections">
+      <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/><path d="M8.5 11.5l2 2 4-4.5"/></svg>
+      Сборы
+    </button>
+    <button class="tab" data-tab="mine">
+      <svg viewBox="0 0 24 24"><path d="M9 6l2 2 4-4"/><path d="M9 12l2 2 4-4"/><path d="M9 18l2 2 4-4"/><path d="M16 6h3M16 12h3M16 18h3"/></svg>
+      Мои заявки
+    </button>
+  </nav>
+
+  <!-- modal overlay + sheet -->
+  <div class="overlay" id="overlay"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <div id="formView">
+      <div class="sheet-head">
+        <h3>Подача заявки</h3>
+        <button class="sheet-close" id="closeSheet"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="steps" id="steps"><i class="on"></i><i></i><i></i></div>
+      <div class="stepcount" id="stepcount">Шаг 1 из 3</div>
+
+      <div class="sheet-body">
+        <!-- STEP 1 -->
+        <div class="step active" data-step="1">
+          <div class="field">
+            <label>Номер исполнительного производства</label>
+            <input class="inp mono" id="fNum" placeholder="12345/26/77001-ИП" inputmode="text" />
+            <div class="hint"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Запросим данные из базы ФССП</div>
+          </div>
+          <div class="fsp-result" id="fspResult"><div class="spin"></div><div class="lbl">Проверяем по базе ФССП…</div></div>
+          <div class="field">
+            <label>ФИО</label>
+            <input class="inp" id="fName" placeholder="Иванов Иван Иванович" />
+            <div class="hint">Полное имя для скрытой проверки</div>
+          </div>
+          <div class="field">
+            <label>Дата рождения</label>
+            <input class="inp mono" id="fDob" placeholder="ДД.ММ.ГГГГ" inputmode="numeric" />
+          </div>
+          <div class="anon">
+            <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+            <p>Ваши ФИО и дата рождения используются только для автоматической проверки в ФССП и <b>НЕ</b> будут опубликованы. Заявка останется 100% анонимной.</p>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step" data-step="2">
+          <div class="field">
+            <label>Ссылка на цель в CloudTips</label>
+            <input class="inp" id="fLink" placeholder="https://tips.cloudtips.ru/..." inputmode="url" />
+            <div class="hint">Куда переводить поддержку. Создайте цель на cloudtips.ru</div>
+          </div>
+          <div class="field">
+            <label>Описание / История</label>
+            <textarea class="ta" id="fStory" maxlength="500" placeholder="Расскажите, почему нужна помощь..."></textarea>
+            <div class="counter"><span id="storyCount">0</span>/500</div>
+          </div>
+          <div class="field">
+            <label>Сумма долга, ₽</label>
+            <input class="inp mono" id="fAmount" placeholder="120 000" inputmode="numeric" />
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step" data-step="3">
+          <div class="summary" id="summary"></div>
+          <label class="check" id="agreeCheck">
+            <span class="box"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>
+            <span>Согласен на обработку персональных данных согласно <a href="#" onclick="return false">152‑ФЗ</a>. Данные используются исключительно для проверки в ФССП.</span>
+          </label>
+          <label class="check" id="anonCheck" style="margin-top:14px">
+            <span class="box"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>
+            <span>Понимаю, что заявка публикуется анонимно, без моего имени и личных данных.</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="sheet-foot">
+        <button class="btn ghost" id="prevBtn" style="display:none">Назад</button>
+        <button class="btn primary" id="nextBtn" disabled>Далее</button>
+      </div>
+    </div>
+
+    <!-- success -->
+    <div class="success" id="successView">
+      <div class="tick"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+      <h3>Заявка отправлена</h3>
+      <p>Мы проверим номер производства по базе ФССП. Обычно это занимает до 24 часов. Статус появится во вкладке «Мои заявки».</p>
+      <button class="btn primary" id="toMine" style="width:100%">К моим заявкам</button>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <div class="toast" id="toast"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/></svg><span id="toastTxt"></span></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const tg = (window.Telegram && window.Telegram.WebApp) || null;
+  if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
+  const haptic = (t)=>{ try{ tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(t||'light'); }catch(e){} };
+  const $ = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+  const fmt = (n)=> n.toLocaleString('ru-RU') + ' ₽';
+
+  /* ---------- demo data ---------- */
+  const palette = ['#1c6b4a','#bd7d16','#3f6b8c','#8c5a3f','#5d6b62','#7a4d6b'];
+  let collections = [
+    {id:1, title:'Долг по ЖКХ, одна с двумя детьми', story:'После развода накопились коммунальные долги. Боюсь, что отключат свет и воду зимой.', raised:48200, goal:120000, status:'verified', supporters:312, urgent:true, link:'https://tips.cloudtips.ru/demo1'},
+    {id:2, title:'Микрозаймы после сокращения', story:'Попал под сокращение, перекрыл зарплату займами. Проценты съедают всё, что нахожу.', raised:17900, goal:60000, status:'verified', supporters:128, urgent:false, link:'https://tips.cloudtips.ru/demo2'},
+    {id:3, title:'Штраф ФССП — под угрозой автомобиль', story:'Единственный способ работать — машина. Если заберут за долг, останусь без дохода совсем.', raised:91400, goal:95000, status:'verified', supporters:540, urgent:true, link:'https://tips.cloudtips.ru/demo3'},
+    {id:4, title:'Долг по расписке, проверка идёт', story:'Занял на лечение матери, не успел вернуть. Сейчас оформляю рассрочку через приставов.', raised:6300, goal:40000, status:'pending', supporters:41, urgent:false, link:'https://tips.cloudtips.ru/demo4'},
+    {id:5, title:'Кредитная карта после больницы', story:'Три месяца без работы из‑за операции. Долг по карте рос каждый день.', raised:75000, goal:75000, status:'done', supporters:489, urgent:false, link:'https://tips.cloudtips.ru/demo5'},
+  ];
+
+  let myRequests = [
+    {id:'r1', title:'Долг по расписке, проверка идёт', num:'88421/24/77001-ИП', amount:40000, status:'check'},
+    {id:'r2', title:'Коммуналка после переезда', num:'12093/25/77001-ИП', amount:28000, status:'ok'},
+  ];
+
+  let currentFilter = 'all';
+
+  /* ---------- render collections ---------- */
+  const listEl = $('#collectionsList');
+  function filtered(){
+    if(currentFilter==='all') return collections.filter(c=>c.status!=='done');
+    if(currentFilter==='verified') return collections.filter(c=>c.status==='verified');
+    if(currentFilter==='urgent') return collections.filter(c=>c.urgent && c.status!=='done');
+    if(currentFilter==='done') return collections.filter(c=>c.status==='done');
+    return collections;
+  }
+  function badgeFor(s){
+    if(s==='verified') return '<span class="badge verified"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>Проверено ФССП</span>';
+    if(s==='pending') return '<span class="badge pending"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Проверяется</span>';
+    return '<span class="badge done">Завершён</span>';
+  }
+  function avatars(n){
+    const show = Math.min(4,n);
+    let h='<div class="avatars">';
+    for(let i=0;i<show;i++){
+      const letters=['А','М','К','С','Д','О'][i%6];
+      h+=`<span style="background:${palette[i%palette.length]}">${letters}</span>`;
+    }
+    h+=`<span class="more">+${n-show>0?n-show:0}</span></div>`;
+    return h;
+  }
+  function renderCollections(){
+    const data = filtered();
+    if(!data.length){
+      listEl.innerHTML = `<div class="empty"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div><h4>Нет сборов в этой категории</h4><p>Станьте первым — подайте заявку на взаимопомощь.</p></div>`;
+      return;
+    }
+    listEl.innerHTML = data.map(c=>{
+      const pct = Math.min(100, Math.round(c.raised/c.goal*100));
+      const done = c.status==='done';
+      return `<article class="card" data-id="${c.id}">
+        <div class="row1">
+          ${badgeFor(c.status)}
+          ${c.urgent && !done ? '<span class="badge urgent">Срочно</span>' : ''}
+        </div>
+        <h3>${c.title}</h3>
+        <p class="story">${c.story}</p>
+        <div class="meta">
+          <span class="raised">${fmt(c.raised)}</span>
+          <span class="goal">из ${fmt(c.goal)} · ${pct}%</span>
+        </div>
+        <div class="bar"><i data-pct="${pct}"></i></div>
+        <div class="foot">
+          <div style="display:flex;align-items:center">${avatars(c.supporters)}<span class="supporters">${c.supporters} поддержали</span></div>
+          ${done ? '<span class="badge done">Закрыто ✓</span>' : `<button class="btn-support" data-link="${c.link}"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>Поддержать</button>`}
+        </div>
+      </article>`;
+    }).join('');
+    // reveal + animate bars
+    requestAnimationFrame(()=>{
+      $$('.card', listEl).forEach((el,i)=>{
+        setTimeout(()=>{ el.classList.add('in'); const b=$('.bar i',el); if(b) b.style.width=b.dataset.pct+'%'; }, i*70);
+      });
+    });
+    // support buttons
+    $$('.btn-support', listEl).forEach(b=> b.addEventListener('click', e=>{
+      e.stopPropagation(); haptic('medium');
+      const link=b.dataset.link;
+      if(tg && tg.openLink){ try{ tg.openLink(link); }catch(_){ window.open(link,'_blank'); } }
+      else { window.open(link,'_blank'); }
+      toast('Открываем страницу поддержки…');
+    }));
+  }
+
+  /* ---------- filters ---------- */
+  $('#chips').addEventListener('click', e=>{
+    const chip = e.target.closest('.chip'); if(!chip) return;
+    haptic('light');
+    $$('.chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.f;
+    renderCollections();
+  });
+
+  /* ---------- render my requests ---------- */
+  const stMap = {check:['check','На проверке ФССП'], ok:['ok','Сбор активен'], closed:['closed','Завершено'], reject:['reject','Отклонено']};
+  function renderMine(){
+    const el = $('#mineList');
+    if(!myRequests.length){
+      el.innerHTML = `<div class="empty"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M4 9l8 5 8-5"/></svg></div><h4>У вас пока нет заявок</h4><p>Подайте заявку на сбор взаимопомощи — она появится здесь после проверки.</p></div>`;
+      return;
+    }
+    el.innerHTML = myRequests.map(r=>{
+      const s = stMap[r.status]||stMap.check;
+      return `<div class="req"><div class="top"><div><h4>${r.title}</h4><div class="num">${r.num}</div></div><span class="st ${s[0]}"><span class="d"></span>${s[1]}</span></div><div class="bot"><span class="amt">${fmt(r.amount)}</span><span class="goal" style="font-size:12px;color:var(--ink-faint)">целевая сумма</span></div></div>`;
+    }).join('');
+    requestAnimationFrame(()=> $$('.req',el).forEach((x,i)=> setTimeout(()=>x.classList.add('in'), i*70)));
+  }
+
+  /* ---------- tabs ---------- */
+  function showScreen(name){
+    $$('.screen').forEach(s=>s.classList.remove('active'));
+    $('#screen-'+name).classList.add('active');
+    $$('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+    $('#screen-'+name).scrollTop = 0;
+    if(name==='mine') renderMine();
+  }
+  $$('.tab').forEach(t=> t.addEventListener('click', ()=>{ haptic('light'); showScreen(t.dataset.tab); }));
+  $('#mineBack').addEventListener('click', ()=>{ haptic('light'); showScreen('collections'); });
+
+  /* ---------- modal / stepper ---------- */
+  const overlay=$('#overlay'), sheet=$('#sheet');
+  let step=1;
+  const data={num:'',name:'',dob:'',link:'',story:'',amount:'',agree:false,anon:false,fsp:null};
+
+  function openSheet(){
+    haptic('medium');
+    overlay.classList.add('open'); sheet.classList.add('open');
+    resetForm();
+  }
+  function closeSheet(){
+    haptic('light');
+    overlay.classList.remove('open'); sheet.classList.remove('open');
+  }
+  function resetForm(){
+    step=1;
+    ['fNum','fName','fDob','fLink','fStory','fAmount'].forEach(id=>$('#'+id).value='');
+    $('#storyCount').textContent='0';
+    $('#agreeCheck').classList.remove('on'); $('#anonCheck').classList.remove('on');
+    data.agree=data.anon=false; data.fsp=null;
+    $('#fspResult').classList.remove('show','ok');
+    $('#formView').style.display=''; $('#successView').classList.remove('show');
+    gotoStep(1);
+  }
+  function gotoStep(n){
+    step=n;
+    $$('.step').forEach(s=>s.classList.toggle('active', +s.dataset.step===n));
+    $$('#steps i').forEach((s,i)=>s.classList.toggle('on', i<n));
+    $('#stepcount').textContent='Шаг '+n+' из 3';
+    $('#prevBtn').style.display = n>1 ? '' : 'none';
+    $('#nextBtn').textContent = n===3 ? 'Отправить заявку' : 'Далее';
+    if(n===3) buildSummary();
+    validate();
+  }
+  function buildSummary(){
+    const rows=[
+      ['Производство', data.num||'—'],
+      ['ФИО', 'скрыто · проверка ФССП'],
+      ['Сумма долга', data.amount? fmt(+data.amount.replace(/\D/g,'')||0) : '—'],
+      ['CloudTips', data.link||'—'],
+    ];
+    $('#summary').innerHTML = rows.map(r=>`<div class="li"><span class="k">${r[0]}</span><span class="v">${escapeHtml(r[1])}</span></div>`).join('');
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+  function stepValid(n){
+    if(n===1){
+      const numOk = /\d{2,}\/\d{2}\/\d{4,}/.test(data.num) || data.num.length>=6;
+      const nameOk = data.name.trim().split(/\s+/).length>=2;
+      const dobOk = /^\d{2}\.\d{2}\.\d{4}$/.test(data.dob);
+      return numOk && nameOk && dobOk;
+    }
+    if(n===2){
+      const linkOk = /cloudtips\.ru/i.test(data.link) || /^https?:\/\//.test(data.link);
+      const storyOk = data.story.trim().length>=10;
+      const amtOk = (+data.amount.replace(/\D/g,'')||0) > 0;
+      return linkOk && storyOk && amtOk;
+    }
+    if(n===3) return data.agree && data.anon;
+    return false;
+  }
+  function validate(){ $('#nextBtn').disabled = !stepValid(step); }
+
+  // live bindings
+  $('#fNum').addEventListener('input', e=>{ data.num=e.target.value; validate(); });
+  $('#fNum').addEventListener('blur', e=>{ if(e.target.value.length>=6) mockFssp(); });
+  $('#fName').addEventListener('input', e=>{ data.name=e.target.value; validate(); });
+  $('#fDob').addEventListener('input', e=>{
+    let v=e.target.value.replace(/\D/g,'').slice(0,8);
+    if(v.length>=3) v=v.slice(0,2)+'.'+v.slice(2);
+    if(v.length>=6) v=v.slice(0,5)+'.'+v.slice(5);
+    e.target.value=v; data.dob=v; validate();
+  });
+  $('#fLink').addEventListener('input', e=>{ data.link=e.target.value.trim(); validate(); });
+  $('#fStory').addEventListener('input', e=>{ data.story=e.target.value; $('#storyCount').textContent=e.target.value.length; validate(); });
+  $('#fAmount').addEventListener('input', e=>{
+    let v=e.target.value.replace(/\D/g,'');
+    e.target.value = v? (+v).toLocaleString('ru-RU') : '';
+    data.amount=e.target.value; validate();
+  });
+  $('#agreeCheck').addEventListener('click', ()=>{ data.agree=!data.agree; $('#agreeCheck').classList.toggle('on',data.agree); haptic('light'); validate(); });
+  $('#anonCheck').addEventListener('click', ()=>{ data.anon=!data.anon; $('#anonCheck').classList.toggle('on',data.anon); haptic('light'); validate(); });
+
+  // mock FSSP lookup
+  let fspTimer=null;
+  function mockFssp(){
+    const box=$('#fspResult');
+    box.classList.add('show'); box.classList.remove('ok');
+    box.innerHTML='<div class="spin"></div><div class="lbl">Проверяем по базе ФССП…</div>';
+    clearTimeout(fspTimer);
+    fspTimer=setTimeout(()=>{
+      const amt = (+data.amount.replace(/\D/g,'')||0) || (90000+Math.floor(Math.random()*60000));
+      data.fsp={debt:amt, creditor:'ООО «МКК Ромашка»'};
+      box.classList.add('ok');
+      box.innerHTML=`<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--pine);fill:none;stroke-width:2.2;flex-shrink:0"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/>
