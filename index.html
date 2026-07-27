@@ -694,3 +694,61 @@
       data.fsp={debt:amt, creditor:'ООО «МКК Ромашка»'};
       box.classList.add('ok');
       box.innerHTML=`<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--pine);fill:none;stroke-width:2.2;flex-shrink:0"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/>
+haptic('success');
+    const amt = +data.amount.replace(/\D/g,'')||0;
+    myRequests.unshift({
+      id:'r'+Date.now(),
+      title: data.story.split(/[.!?]/)[0].slice(0,46) || 'Новая заявка',
+      num: data.num, amount: amt, status:'check'
+    });
+    $('#formView').style.display='none';
+    $('#successView').classList.add('show');
+    // bump community ticker a touch
+    communityBase += 0; // unchanged; new request is pending
+    bumpChecking(+1);
+  }
+
+  $('#openApply').addEventListener('click', openSheet);
+  $('#closeSheet').addEventListener('click', closeSheet);
+  overlay.addEventListener('click', closeSheet);
+  $('#toMine').addEventListener('click', ()=>{ closeSheet(); setTimeout(()=>showScreen('mine'),300); });
+
+  /* ---------- toast ---------- */
+  let toastTimer=null;
+  function toast(msg){
+    $('#toastTxt').textContent=msg;
+    const t=$('#toast'); t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
+  }
+
+  /* ---------- living counters ---------- */
+  let communityBase = 4_812_300;
+  function animateCount(el, to, suffix){
+    const from=0, dur=1400, start=performance.now();
+    function tick(now){
+      const p=Math.min(1,(now-start)/dur);
+      const e=1-Math.pow(1-p,3);
+      el.textContent = Math.round(from+(to-from)*e).toLocaleString('ru-RU')+(suffix||'');
+      if(p<1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  animateCount($('#communityTotal'), communityBase, ' ₽');
+  // slow live drift
+  setInterval(()=>{
+    communityBase += Math.floor(Math.random()*900)+100;
+    $('#communityTotal').textContent = communityBase.toLocaleString('ru-RU')+' ₽';
+  }, 4200);
+  function bumpChecking(d){ const el=$('#checkingNow'); el.textContent = Math.max(0,(+el.textContent)+d); }
+  setInterval(()=>{ bumpChecking(Math.random()>.5?1:-1); }, 6000);
+
+  /* ---------- init ---------- */
+  renderCollections();
+  renderMine();
+
+  // keyboard: in telegram, adjust sheet height
+  if(tg && tg.onEvent){ try{ tg.onEvent('viewportChanged', ()=>{}); }catch(e){} }
+})();
+</script>
+</body>
+</html>
