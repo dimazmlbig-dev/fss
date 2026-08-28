@@ -82,7 +82,7 @@ main{flex:1;padding:16px 16px 110px}
 .bsup:active{transform:scale(.93)}
 .bsup svg{width:14px;height:14px;fill:currentColor}
 
-/* ═══ КОЛЕСО: фиолетовый игровой экран ═══ */
+/* ═══ КОЛЕСО ═══ */
 #scr-wheel{position:relative;margin:-16px -16px -110px;color:#fff;
   padding:calc(16px + env(safe-area-inset-top)) 18px 20px;min-height:100vh;
   background:radial-gradient(90% 60% at 50% 38%,#8a3ff0 0%,#7226d8 55%,#5b17b4 100%)}
@@ -167,7 +167,7 @@ h2.sm{font-family:var(--fd);font-size:13px;margin:16px 0 10px;color:var(--ink2)}
 .okb{background:linear-gradient(135deg,var(--acc2),var(--acc));color:var(--acc-ink)}
 .nob{background:rgba(192,90,84,.15);color:var(--err)}
 
-/* ═══ форма ═══ */
+/* ═══ форма ══ */
 .steps{display:flex;gap:6px;margin-bottom:16px}
 .steps i{flex:1;height:5px;border-radius:99px;background:var(--track)}
 .steps i.on{background:linear-gradient(90deg,var(--acc2),var(--acc));box-shadow:0 0 8px var(--glow)}
@@ -246,6 +246,18 @@ body.in-form .tabbar{display:none}
     <div class="banner glass"><div class="ic">🛡️</div><p><b>Анонимная взаимопомощь.</b> Истории без имён, каждая заявка проходит модерацию.</p></div>
     <button class="cta" id="ctaApply">＋ Подать заявку</button>
     <div id="list"></div>
+    <div class="card glass" style="margin-top:2px">
+      <div class="top" style="margin-bottom:8px">
+        <div class="ava" style="background:linear-gradient(140deg,#e4c989,#c9a355)">📢</div>
+        <div><h3>Реклама и сотрудничество</h3>
+        <span class="badge">открыты к партнёрству</span></div>
+      </div>
+      <p class="story" style="margin-bottom:12px">Хотите разместить рекламу или предложить сотрудничество — пишите, всё обсудим!</p>
+      <div class="abtns" style="margin-top:0">
+        <button class="okb" id="adTg">✈️ @dmitriizmll</button>
+        <button class="btn sec" id="adMail" style="flex:1">✉️ boss_rf@inbox.ru</button>
+      </div>
+    </div>
   </section>
 
   <section class="screen" id="scr-wheel">
@@ -343,7 +355,7 @@ const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n).toLocaleString('ru-RU');
 const GRADS=['linear-gradient(140deg,#8fbf9a,#5d9468)','linear-gradient(140deg,#e4c989,#c9a355)','linear-gradient(140deg,#9db8d0,#6d8fae)','linear-gradient(140deg,#d0a8b8,#b07f92)','linear-gradient(140deg,#b8a8d8,#8f7fb5)','linear-gradient(140deg,#d8bc9a,#b5946d)'];
-const EMO=['🏠','💳','🚗','','📚',''];
+const EMO=['🏠','','🚗','','📚',''];
 
 let tt;function toast(m){const e=$('#toast');e.textContent=m;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2400);}
 
@@ -422,7 +434,7 @@ $('#shGo').onclick=async()=>{
   }else{toast(r.error||'Не получилось, попробуй ещё раз');}
 };
 
-/* ---------- колесо: вертикальный слот с блоками объявлений ---------- */
+/* ---------- колесо ---------- */
 const STEP=178,TC=['#7ed32f','#2f8fe6','#f0382e','#a44df0','#22a7d8','#ff8c1a'];
 let spinning=false,winner=null,tInt=null;
 function ticketHTML(c,ei,tilt){
@@ -499,11 +511,19 @@ async function loadAdmin(){
     <div class="abtns"><button class="okb" data-act="approve" data-id="${a.id}">✅ Одобрить</button>
     <button class="nob" data-act="reject" data-id="${a.id}">❌ Отклонить</button></div></div>`).join(''):'<p class="wlegal" style="color:var(--ink3)">Пусто 🎉</p>';
   const all=await api('/api/admin/list');
-  $('#admAll').innerHTML=all.ok?all.items.slice(0,10).map(a=>`<div class="req glass"><div class="h"><b>#${a.id}</b><span class="st ${a.status}">${a.status}</span></div><p class="story" style="margin:0">${esc(a.title||a.story)}</p></div>`).join(''):'';
+  $('#admAll').innerHTML=all.ok?all.items.slice(0,10).map(a=>`<div class="req glass"><div class="h"><b>#${a.id}</b><span class="st ${a.status}">${a.status}</span></div><p class="story" style="margin:0">${esc(a.title||a.story)}</p>
+    <div class="abtns"><button class="nob" data-del="${a.id}">🗑 Удалить объявление</button></div></div>`).join(''):'';
   $$('#scr-admin [data-act]').forEach(b=>b.onclick=async()=>{
     haptic('medium');
     await api('/api/admin/action',{method:'POST',body:JSON.stringify({id:+b.dataset.id,action:b.dataset.act})});
     toast(b.dataset.act==='approve'?'Одобрено ✅':'Отклонено ❌');
+    loadAdmin();loadCollections();
+  });
+  $$('#scr-admin [data-del]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Удалить объявление #'+b.dataset.del+' из ленты и колеса?'))return;
+    haptic('medium');
+    await api('/api/admin/delete',{method:'POST',body:JSON.stringify({id:+b.dataset.del})});
+    toast('🗑 Объявление удалено');
     loadAdmin();loadCollections();
   });
 }
@@ -545,6 +565,11 @@ $('#btnNext').onclick=async()=>{haptic('medium');
   if(!r.ok)return toast(r.error||'Ошибка. Открой из Telegram.');
   haptic('success');show('ok');};
 $('#btnToMine').onclick=()=>switchTab('mine');
+
+/* ---------- реклама ---------- */
+$('#adTg').onclick=()=>{haptic('light');const u='https://t.me/dmitriizmll';
+  if(tg&&tg.openLink){try{tg.openLink(u)}catch(e){location.href=u}}else location.href=u;};
+$('#adMail').onclick=()=>{haptic('light');location.href='mailto:boss_rf@inbox.ru';};
 
 loadCollections();
 })();
