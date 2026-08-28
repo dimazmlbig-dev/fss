@@ -5,483 +5,343 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Взаимопомощь</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--font-body:'Manrope',system-ui,sans-serif;--font-disp:'Unbounded',var(--font-body)}
-html[data-theme="dark"]{
-  --bg:#0d1411;--surface:#17231d;--surface2:#1f2e26;--line:#26382e;
-  --ink:#eaf2ec;--ink2:#9db3a4;--ink3:#5f7367;
-  --green:#2ecc88;--green-deep:#1fa56a;--green-soft:rgba(46,204,136,.13);
-  --warn:#f0b429;--err:#e5564f;--shadow:0 10px 28px rgba(0,0,0,.35);
-}
-html[data-theme="light"]{
-  --bg:#f2f5f0;--surface:#ffffff;--surface2:#f4f8f3;--line:#dfe8dd;
-  --ink:#152019;--ink2:#5c6f62;--ink3:#94a497;
-  --green:#149463;--green-deep:#0f7f54;--green-soft:rgba(20,148,99,.11);
-  --warn:#b57d10;--err:#cf4740;--shadow:0 10px 28px rgba(20,40,28,.10);
-}
-html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--font-body);
-  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
-.app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;
-  display:flex;flex-direction:column;position:relative}
-
-/* ---------- header ---------- */
-header{position:sticky;top:0;z-index:20;background:var(--bg);
-  border-bottom:1px solid var(--line);
-  padding:14px 18px calc(12px + env(safe-area-inset-top)) ;
-  padding-top:calc(12px + env(safe-area-inset-top));
-  display:flex;align-items:center;gap:10px}
-.logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(140deg,var(--green),var(--green-deep));
-  display:grid;place-items:center;font-size:17px;flex-shrink:0}
-header h1{font-family:var(--font-disp);font-size:15px;font-weight:700;letter-spacing:.3px;flex:1}
-.theme-btn{width:36px;height:36px;border-radius:12px;border:1px solid var(--line);
-  background:var(--surface);color:var(--ink2);display:grid;place-items:center;cursor:pointer;transition:.2s}
-.theme-btn:active{transform:scale(.92)}
-.theme-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
-
-/* ---------- main / tabs ---------- */
-main{flex:1;padding:16px 16px 96px;overflow-y:auto}
-.screen{display:none;animation:fadein .35s ease}
-.screen.active{display:block}
-@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-
-/* ---------- info banner ---------- */
-.banner{display:flex;gap:11px;align-items:flex-start;background:var(--green-soft);
-  border:1px solid var(--green-soft);border-radius:16px;padding:13px 14px;margin-bottom:16px}
-.banner .ic{width:30px;height:30px;border-radius:10px;background:var(--green);
-  display:grid;place-items:center;font-size:15px;flex-shrink:0}
-.banner p{font-size:12.5px;color:var(--ink2);line-height:1.45}
-.banner b{color:var(--ink)}
-
-/* ---------- collection cards ---------- */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;
-  padding:15px;margin-bottom:12px;box-shadow:var(--shadow);
-  opacity:0;transform:translateY(14px);animation:up .5s cubic-bezier(.2,.7,.2,1) forwards}
-@keyframes up{to{opacity:1;transform:none}}
-.card .top{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
-.ava{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
-  font-size:21px;flex-shrink:0;box-shadow:inset 0 -6px 12px rgba(0,0,0,.15)}
-.card h3{font-size:15px;font-weight:800;line-height:1.25;flex:1}
-.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;
-  padding:3px 8px;border-radius:99px;background:var(--green-soft);color:var(--green);margin-top:5px}
-.badge svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.6}
-.card .story{font-size:13px;color:var(--ink2);margin-bottom:13px;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.pbar{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-bottom:7px}
-.pbar i{display:block;height:100%;border-radius:99px;width:0;
-  background:linear-gradient(90deg,var(--green-deep),var(--green));
-  transition:width 1s cubic-bezier(.2,.7,.2,1)}
-.amounts{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px}
-.amounts .r{font-weight:800;font-size:15px}
-.amounts .g{font-size:12px;color:var(--ink3)}
-.card .foot{display:flex;justify-content:space-between;align-items:center}
-.sup{font-size:12px;color:var(--ink3)}
-.btn-support{border:none;background:var(--green);color:#062017;font-family:var(--font-body);
-  font-weight:800;font-size:13px;padding:10px 16px;border-radius:12px;cursor:pointer;
-  display:flex;align-items:center;gap:6px;transition:.15s}
-.btn-support:active{transform:scale(.94)}
-.btn-support svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.4}
-
-/* ---------- big CTA ---------- */
-.cta{width:100%;border:none;border-radius:16px;padding:16px;cursor:pointer;
-  background:linear-gradient(135deg,var(--green),var(--green-deep));color:#062017;
-  font-family:var(--font-body);font-weight:800;font-size:15px;margin-bottom:18px;
-  box-shadow:0 10px 24px -8px var(--green-soft),0 6px 16px -6px rgba(0,0,0,.3);transition:.15s;
-  display:flex;justify-content:center;align-items:center;gap:8px}
+:root{--fb:'Manrope',system-ui,sans-serif;--fd:'Unbounded',var(--fb)}
+html[data-theme="dark"]{--bg:#0d1411;--sf:#17231d;--sf2:#1f2e26;--ln:#26382e;--ink:#eaf2ec;--ink2:#9db3a4;--ink3:#5f7367;--gr:#2ecc88;--grd:#1fa56a;--grs:rgba(46,204,136,.13);--warn:#f0b429;--err:#e5564f;--sh:0 10px 28px rgba(0,0,0,.35)}
+html[data-theme="light"]{--bg:#f2f5f0;--sf:#fff;--sf2:#f4f8f3;--ln:#dfe8dd;--ink:#152019;--ink2:#5c6f62;--ink3:#94a497;--gr:#149463;--grd:#0f7f54;--grs:rgba(20,148,99,.11);--warn:#b57d10;--err:#cf4740;--sh:0 10px 28px rgba(20,40,28,.1)}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--ln);padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;gap:10px}
+.logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(140deg,var(--gr),var(--grd));display:grid;place-items:center;font-size:17px}
+header h1{font-family:var(--fd);font-size:14px;flex:1}
+.tbtn{width:36px;height:36px;border-radius:12px;border:1px solid var(--ln);background:var(--sf);color:var(--ink2);display:grid;place-items:center;cursor:pointer}
+.tbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+main{flex:1;padding:16px 16px 100px}
+.screen{display:none;animation:fd .3s ease}.screen.active{display:block}
+@keyframes fd{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+.banner{display:flex;gap:11px;background:var(--grs);border-radius:16px;padding:13px 14px;margin-bottom:14px}
+.banner p{font-size:12.5px;color:var(--ink2)}.banner b{color:var(--ink)}
+.cta{width:100%;border:none;border-radius:16px;padding:16px;background:linear-gradient(135deg,var(--gr),var(--grd));color:#062017;font:800 15px var(--fb);cursor:pointer;margin-bottom:16px;box-shadow:0 8px 20px -8px var(--gr)}
 .cta:active{transform:scale(.97)}
-
-/* ---------- my apps ---------- */
-.empty{text-align:center;padding:56px 24px}
-.empty .ic{width:74px;height:74px;border-radius:24px;background:var(--surface);
-  border:1px solid var(--line);display:grid;place-items:center;font-size:30px;margin:0 auto 16px}
-.empty h3{font-family:var(--font-disp);font-size:16px;margin-bottom:8px}
-.empty p{font-size:13px;color:var(--ink2);max-width:240px;margin:0 auto 20px}
-.req{background:var(--surface);border:1px solid var(--line);border-radius:16px;
-  padding:14px 15px;margin-bottom:11px;box-shadow:var(--shadow);
-  opacity:0;transform:translateY(12px);animation:up .45s forwards}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:var(--sh);animation:up .5s cubic-bezier(.2,.7,.2,1) both}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1}}
+.card .top{display:flex;gap:12px;margin-bottom:10px}
+.ava{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:21px;flex-shrink:0}
+.card h3{font-size:15px;font-weight:800;line-height:1.25}
+.badge{display:inline-flex;gap:4px;align-items:center;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--grs);color:var(--gr);margin-top:5px}
+.story{font-size:13px;color:var(--ink2);margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pbar{height:8px;background:var(--sf2);border-radius:99px;overflow:hidden;margin-bottom:7px}
+.pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--grd),var(--gr));transition:width 1s .2s}
+.amts{display:flex;justify-content:space-between;margin-bottom:12px}
+.amts .r{font-weight:800}.amts .g{font-size:12px;color:var(--ink3)}
+.foot{display:flex;justify-content:space-between;align-items:center}
+.sup{font-size:12px;color:var(--ink3)}
+.bsup{border:none;background:var(--gr);color:#062017;font:800 13px var(--fb);padding:10px 16px;border-radius:12px;cursor:pointer}
+.bsup:active{transform:scale(.94)}
+/* wheel */
+.wheel-wrap{position:relative;width:290px;margin:6px auto 16px}
+.wheel-wrap svg{width:100%;transition:transform 4.2s cubic-bezier(.12,.8,.12,1);filter:drop-shadow(0 12px 24px rgba(0,0,0,.35))}
+.pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border:12px solid transparent;border-top:20px solid var(--gr);z-index:2}
+.wheel-cta{width:100%;border:none;border-radius:16px;padding:16px;background:var(--gr);color:#062017;font:800 15px var(--fb);cursor:pointer}
+.wheel-cta:disabled{background:var(--sf2);color:var(--ink3)}
+.wres{background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:16px;margin-top:14px;animation:up .4s both}
+.wres h3{font-size:15px;font-weight:800;margin-bottom:6px}
+.wres p{font-size:13px;color:var(--ink2);margin-bottom:12px}
+/* mine / admin */
+.empty{text-align:center;padding:50px 20px}
+.empty .ic{width:72px;height:72px;border-radius:24px;background:var(--sf);border:1px solid var(--ln);display:grid;place-items:center;font-size:28px;margin:0 auto 14px}
+.empty h3{font-family:var(--fd);font-size:15px;margin-bottom:8px}
+.empty p{font-size:13px;color:var(--ink2);max-width:240px;margin:0 auto}
+.req{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:14px;margin-bottom:11px;box-shadow:var(--sh);animation:up .4s both}
 .req .h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.req .id{font-weight:800;font-size:14px}
-.st{font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:5px}
-.st .d{width:6px;height:6px;border-radius:50%}
+.st{font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px}
 .st.pending{background:rgba(240,180,41,.14);color:var(--warn)}
-.st.pending .d{background:var(--warn);animation:blink 1.3s infinite}
-.st.approved{background:var(--green-soft);color:var(--green)}
-.st.approved .d{background:var(--green)}
+.st.approved{background:var(--grs);color:var(--gr)}
 .st.rejected{background:rgba(229,86,79,.13);color:var(--err)}
-.st.rejected .d{background:var(--err)}
-@keyframes blink{50%{opacity:.25}}
-.req .story{font-size:12.5px;color:var(--ink2);margin-bottom:8px;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.req .m{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3)}
-.req .m b{color:var(--ink);font-weight:800}
-
-/* ---------- form ---------- */
-.steps{display:flex;gap:6px;margin-bottom:18px}
-.steps i{flex:1;height:5px;border-radius:99px;background:var(--surface2);transition:.3s}
-.steps i.on{background:var(--green)}
-h2.title{font-family:var(--font-disp);font-size:16px;margin-bottom:14px}
-.fcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
-.field{margin-bottom:15px}
-.field:last-child{margin-bottom:0}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:14px}
+.stat{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:12px 8px;text-align:center}
+.stat b{display:block;font-family:var(--fd);font-size:16px;color:var(--gr)}
+.stat span{font-size:10.5px;color:var(--ink3)}
+.abtns{display:flex;gap:8px;margin-top:10px}
+.abtns button{flex:1;border:none;border-radius:11px;padding:10px;font:800 13px var(--fb);cursor:pointer}
+.okb{background:var(--gr);color:#062017}.nob{background:rgba(229,86,79,.15);color:var(--err)}
+/* form */
+.steps{display:flex;gap:6px;margin-bottom:16px}
+.steps i{flex:1;height:5px;border-radius:99px;background:var(--sf2)}
+.steps i.on{background:var(--gr)}
+h2.tt{font-family:var(--fd);font-size:15px;margin-bottom:13px}
+.fcard{background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:16px;margin-bottom:13px}
+.field{margin-bottom:14px}.field:last-child{margin:0}
 .field label{display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px}
-.inp{width:100%;background:var(--surface2);border:1.5px solid var(--line);color:var(--ink);
-  padding:13px 14px;border-radius:13px;font:inherit;font-size:14.5px;outline:none;transition:.15s}
-.inp:focus{border-color:var(--green);background:var(--bg)}
-textarea.inp{min-height:104px;resize:vertical}
+.inp{width:100%;background:var(--sf2);border:1.5px solid var(--ln);color:var(--ink);padding:13px 14px;border-radius:13px;font:inherit;font-size:14.5px;outline:none}
+.inp:focus{border-color:var(--gr)}
+textarea.inp{min-height:100px}
 .cnt{text-align:right;font-size:11.5px;color:var(--ink3);margin-top:5px}
-.sum{background:var(--surface2);border-radius:13px;padding:3px 13px;margin-bottom:14px}
-.sum .li{display:flex;justify-content:space-between;gap:10px;padding:11px 0;
-  border-bottom:1px solid var(--line);font-size:13px}
+.sum{background:var(--sf2);border-radius:13px;padding:3px 13px;margin-bottom:13px}
+.sum .li{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--ln);font-size:13px}
 .sum .li:last-child{border:none}
-.sum .k{color:var(--ink3)}
-.sum .v{font-weight:700;text-align:right;max-width:62%;word-break:break-word}
-.check{display:flex;gap:11px;cursor:pointer;user-select:none;margin:11px 0;font-size:13px;color:var(--ink2)}
-.check .bx{width:22px;height:22px;border:2px solid var(--line);border-radius:8px;flex-shrink:0;
-  display:grid;place-items:center;transition:.15s;margin-top:1px;background:var(--surface2)}
-.check .bx svg{width:13px;height:13px;stroke:#062017;stroke-width:3.2;fill:none;opacity:0;transform:scale(.4);transition:.15s}
-.check.on .bx{background:var(--green);border-color:var(--green)}
-.check.on .bx svg{opacity:1;transform:none}
-.rowbtns{display:flex;gap:10px;margin-top:4px}
-.btn{flex:1;border:none;border-radius:14px;padding:15px;font-family:var(--font-body);
-  font-weight:800;font-size:14.5px;cursor:pointer;transition:.15s}
-.btn:active{transform:scale(.97)}
-.btn.pri{background:var(--green);color:#062017}
-.btn.pri:disabled{background:var(--surface2);color:var(--ink3);cursor:not-allowed}
-.btn.sec{background:var(--surface);color:var(--ink2);border:1px solid var(--line);flex:0 0 36%}
-
-/* ---------- success ---------- */
+.sum .k{color:var(--ink3)}.sum .v{font-weight:700;text-align:right;max-width:62%;word-break:break-word}
+.check{display:flex;gap:11px;cursor:pointer;margin:11px 0;font-size:13px;color:var(--ink2)}
+.check .bx{width:22px;height:22px;border:2px solid var(--ln);border-radius:8px;flex-shrink:0;display:grid;place-items:center;background:var(--sf2)}
+.check .bx svg{width:13px;height:13px;stroke:#062017;stroke-width:3.2;fill:none;opacity:0}
+.check.on .bx{background:var(--gr);border-color:var(--gr)}
+.check.on .bx svg{opacity:1}
+.rbtns{display:flex;gap:10px}
+.btn{flex:1;border:none;border-radius:14px;padding:15px;font:800 14.5px var(--fb);cursor:pointer}
+.btn.pri{background:var(--gr);color:#062017}.btn.pri:disabled{background:var(--sf2);color:var(--ink3)}
+.btn.sec{background:var(--sf);color:var(--ink2);border:1px solid var(--ln);flex:0 0 34%}
 .okwrap{text-align:center;padding:44px 24px}
-.okwrap .tk{width:86px;height:86px;border-radius:30px;background:var(--green-soft);
-  display:grid;place-items:center;margin:0 auto 20px;animation:pop .55s cubic-bezier(.2,1.5,.4,1)}
-@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
-.okwrap .tk svg{width:40px;height:40px;stroke:var(--green);stroke-width:2.8;fill:none}
-.okwrap h2{font-family:var(--font-disp);font-size:19px;margin-bottom:9px}
-.okwrap p{font-size:13.5px;color:var(--ink2);max-width:260px;margin:0 auto 26px}
-
-/* ---------- tabbar ---------- */
-.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;
-  background:var(--surface);border-top:1px solid var(--line);z-index:20;
-  display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+.okwrap .tk{width:84px;height:84px;border-radius:28px;background:var(--grs);display:grid;place-items:center;margin:0 auto 18px;animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
+@keyframes pop{from{transform:scale(.3)}to{transform:scale(1)}}
+.okwrap .tk svg{width:38px;height:38px;stroke:var(--gr);stroke-width:2.8;fill:none}
+.okwrap h2{font-family:var(--fd);font-size:18px;margin-bottom:9px}
+.okwrap p{font-size:13.5px;color:var(--ink2);max-width:260px;margin:0 auto 24px}
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--sf);border-top:1px solid var(--ln);display:flex;padding:7px 6px calc(7px + env(safe-area-inset-bottom));z-index:20}
 body.in-form .tabbar{display:none}
-.tab{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;
-  align-items:center;gap:4px;padding:8px 0;border-radius:14px;color:var(--ink3);
-  font-family:var(--font-body);font-weight:700;font-size:11.5px;transition:.2s;position:relative}
-.tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2}
-.tab.active{color:var(--green)}
-.tab .dot{position:absolute;top:6px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;
-  background:var(--warn);border:2px solid var(--surface);display:none}
-.tab .dot.show{display:block}
-
-/* ---------- toast ---------- */
-.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(16px);
-  background:var(--surface);border:1px solid var(--line);color:var(--ink);
-  padding:12px 18px;border-radius:14px;font-size:13px;font-weight:600;opacity:0;
-  transition:.25s;z-index:100;pointer-events:none;max-width:86%;box-shadow:var(--shadow)}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.tab{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;color:var(--ink3);font:700 10.5px var(--fb)}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.tab.active{color:var(--gr)}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(14px);background:var(--sf);border:1px solid var(--ln);padding:12px 18px;border-radius:14px;font-size:13px;font-weight:600;opacity:0;transition:.25s;z-index:100;pointer-events:none;max-width:86%}
+.toast.show{opacity:1;transform:translateX(-50%)}
 .hide{display:none!important}
 </style>
 </head>
 <body>
 <div class="app">
-
 <header>
-  <div class="logo">🤝</div>
-  <h1>Взаимопомощь</h1>
-  <button class="theme-btn" id="themeBtn" aria-label="Сменить тему">
-    <svg id="icoMoon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-    <svg id="icoSun" class="hide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-  </button>
+  <div class="logo">🤝</div><h1>ВЗАИМОПОМОЩЬ</h1>
+  <button class="tbtn" id="themeBtn"><svg id="icoM" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg id="icoS" class="hide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
 </header>
-
 <main>
-  <!-- TAB: collections -->
-  <section class="screen active" id="tab-collections">
-    <div class="banner">
-      <div class="ic">🛡️</div>
-      <p><b>Анонимная взаимопомощь</b> для закрытия долгов. Истории публикуются без имён, каждая заявка проходит модерацию.</p>
-    </div>
+  <section class="screen active" id="scr-collections">
+    <div class="banner"><p><b>🛡️ Анонимная взаимопомощь.</b> Истории публикуются без имён, каждая заявка проходит модерацию.</p></div>
     <button class="cta" id="ctaApply">＋ Подать заявку</button>
     <div id="list"></div>
   </section>
 
-  <!-- TAB: my apps -->
-  <section class="screen" id="tab-mine">
-    <h2 class="title">Мои заявки</h2>
-    <div id="mineList"></div>
+  <section class="screen" id="scr-wheel">
+    <h2 class="tt">Колесо добра 🎡</h2>
+    <p class="story" style="margin-bottom:14px">Не знаешь, кому помочь сегодня? Крутани — колесо само выберет сбор.</p>
+    <div class="wheel-wrap"><div class="pointer"></div><svg id="wheelSvg" viewBox="0 0 300 300"></svg></div>
+    <button class="wheel-cta" id="spinBtn">🎲 Крутить колесо</button>
+    <div id="wheelRes"></div>
   </section>
 
-  <!-- FORM -->
-  <section class="screen" id="screen-form">
-    <div class="steps" id="steps"><i class="on"></i><i></i></div>
-    <h2 class="title" id="stepTitle">Шаг 1 из 2 · Цель и история</h2>
+  <section class="screen" id="scr-mine"><h2 class="tt">Мои заявки</h2><div id="mineList"></div></section>
 
-    <div id="s1">
-      <div class="fcard">
-        <div class="field">
-          <label>Ссылка на цель в CloudTips</label>
-          <input class="inp" id="fLink" placeholder="https://tips.cloudtips.ru/...">
-        </div>
-        <div class="field">
-          <label>История (от 10 символов)</label>
-          <textarea class="inp" id="fStory" maxlength="500" placeholder="Расскажите, почему нужна помощь…"></textarea>
-          <div class="cnt"><span id="cc">0</span>/500</div>
-        </div>
-        <div class="field">
-          <label>Сумма долга, ₽</label>
-          <input class="inp" id="fAmt" placeholder="120 000" inputmode="numeric">
-        </div>
-      </div>
-    </div>
-
-    <div id="s2" class="hide">
-      <div class="fcard">
-        <div class="sum" id="sum"></div>
-        <label class="check" id="c1"><span class="bx"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>
-          <span>Согласен на обработку персональных данных по 152‑ФЗ</span></label>
-        <label class="check" id="c2"><span class="bx"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>
-          <span>Понимаю, что заявка публикуется анонимно</span></label>
-      </div>
-    </div>
-
-    <div class="rowbtns">
-      <button class="btn sec" id="btnBack">Назад</button>
-      <button class="btn pri" id="btnNext">Далее</button>
-    </div>
+  <section class="screen" id="scr-admin">
+    <h2 class="tt">Админ‑панель 🛠</h2>
+    <div class="stats" id="admStats"></div>
+    <h2 class="tt" style="font-size:13px">⏳ На модерации</h2><div id="admPending"></div>
+    <h2 class="tt" style="font-size:13px;margin-top:14px">Все заявки</h2><div id="admAll"></div>
   </section>
 
-  <!-- SUCCESS -->
-  <section class="screen" id="screen-ok">
-    <div class="okwrap">
-      <div class="tk"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
-      <h2>Заявка отправлена</h2>
-      <p>Админ проверит её и опубликует в ленте. Статус можно смотреть во вкладке «Мои заявки».</p>
-      <button class="btn pri" id="btnToMine" style="width:100%">Перейти к моим заявкам</button>
-    </div>
+  <section class="screen" id="scr-form">
+    <div class="steps"><i class="on"></i><i></i></div>
+    <h2 class="tt" id="stepTitle">Шаг 1 из 2 · Цель и история</h2>
+    <div id="s1"><div class="fcard">
+      <div class="field"><label>Ссылка на цель в CloudTips</label><input class="inp" id="fLink" placeholder="https://tips.cloudtips.ru/..."></div>
+      <div class="field"><label>История (от 10 символов)</label><textarea class="inp" id="fStory" maxlength="500" placeholder="Расскажите, почему нужна помощь…"></textarea><div class="cnt"><span id="cc">0</span>/500</div></div>
+      <div class="field"><label>Сумма долга, ₽</label><input class="inp" id="fAmt" placeholder="120 000" inputmode="numeric"></div>
+    </div></div>
+    <div id="s2" class="hide"><div class="fcard">
+      <div class="sum" id="sum"></div>
+      <label class="check" id="c1"><span class="bx"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span><span>Согласен на обработку данных по 152‑ФЗ</span></label>
+      <label class="check" id="c2"><span class="bx"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span><span>Понимаю, что заявка публикуется анонимно</span></label>
+    </div></div>
+    <div class="rbtns"><button class="btn sec" id="btnBack">Назад</button><button class="btn pri" id="btnNext">Далее</button></div>
   </section>
+
+  <section class="screen" id="scr-ok"><div class="okwrap">
+    <div class="tk"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+    <h2>Заявка отправлена</h2>
+    <p>Админ получит её на модерацию. Статус — во вкладке «Мои».</p>
+    <button class="btn pri" id="btnToMine" style="width:100%">К моим заявкам</button>
+  </div></section>
 </main>
 
 <nav class="tabbar">
-  <button class="tab active" data-tab="collections">
-    <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>
-    Сборы
-  </button>
-  <button class="tab" data-tab="mine">
-    <svg viewBox="0 0 24 24"><path d="M9 6l2 2 4-4M9 12l2 2 4-4M9 18l2 2 4-4M16 6h4M16 12h4M16 18h4"/></svg>
-    Мои заявки
-    <span class="dot" id="mineDot"></span>
-  </button>
+  <button class="tab active" data-tab="collections"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>Сборы</button>
+  <button class="tab" data-tab="wheel"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>Колесо</button>
+  <button class="tab" data-tab="mine"><svg viewBox="0 0 24 24"><path d="M9 6l2 2 4-4M9 12l2 2 4-4M9 18l2 2 4-4M16 6h4M16 12h4M16 18h4"/></svg>Мои</button>
+  <button class="tab hide" data-tab="admin" id="adminTab"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/></svg>Админ</button>
 </nav>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
 (function(){
+/* ⚠️ ВСТАВЬ СЮДА АДРЕС СВОЕГО API НА RAILWAY после деплоя: */
+const API = "https://ТВОЙ-СЕРВИС.up.railway.app";
+const ADMIN_ID = 1720219688;
+
 const tg = window.Telegram && window.Telegram.WebApp;
-if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
-const haptic = t=>{ try{ tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(t||'light'); }catch(e){} };
+if(tg){ try{tg.ready();tg.expand();}catch(e){} }
+const haptic=t=>{try{tg&&tg.HapticFeedback&&tg.HapticFeedback.impactOccurred(t||'light')}catch(e){}};
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n).toLocaleString('ru-RU');
+const GRADS=['linear-gradient(140deg,#2ecc88,#157a52)','linear-gradient(140deg,#f0b429,#c07d10)','linear-gradient(140deg,#5aa7e6,#2f6ea8)','linear-gradient(140deg,#e57a9a,#b04a6c)','linear-gradient(140deg,#9a7ae6,#6a4ab0)','linear-gradient(140deg,#e6a15a,#b06a2f)'];
+const EMO=['🏠','💳','🚗','','📚','🧾'];
 
-/* ---------- theme ---------- */
-function applyTheme(t){
-  document.documentElement.dataset.theme=t;
-  localStorage.setItem('fss_theme',t);
-  $('#icoMoon').classList.toggle('hide',t==='light');
-  $('#icoSun').classList.toggle('hide',t==='dark');
+/* тема */
+function applyTheme(t){document.documentElement.dataset.theme=t;localStorage.setItem('fss_theme',t);
+  $('#icoM').classList.toggle('hide',t==='light');$('#icoS').classList.toggle('hide',t==='dark');}
+applyTheme(localStorage.getItem('fss_theme')||(tg&&tg.colorScheme)||'dark');
+$('#themeBtn').onclick=()=>{haptic('light');applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');};
+
+/* тост */
+let tt;function toast(m){const e=$('#toast');e.textContent=m;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2300);}
+
+/* API */
+async function api(path,opts={}){
+  const h=opts.headers||{};
+  if(tg&&tg.initData)h['X-Telegram-InitData']=tg.initData;
+  if(opts.body)h['Content-Type']='application/json';
+  try{const r=await fetch(API+path,{...opts,headers:h});return await r.json();}
+  catch(e){return{ok:false,error:String(e)};}
 }
-let savedTheme=localStorage.getItem('fss_theme');
-if(!savedTheme && tg && tg.colorScheme) savedTheme = tg.colorScheme;
-applyTheme(savedTheme||'dark');
-$('#themeBtn').onclick=()=>{ haptic('light');
-  applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'); };
 
-/* ---------- toast ---------- */
-let tt;
-function toast(m){ const el=$('#toast'); el.textContent=m; el.classList.add('show');
-  clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('show'),2200); }
+/* админ-вкладка видна только тебе (UX), сервер проверяет по подписи */
+const meId = tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+if(meId===ADMIN_ID) $('#adminTab').classList.remove('hide');
 
-/* ---------- data ---------- */
-const COLLECTIONS=[
- {id:1,emoji:'🏠',grad:'linear-gradient(140deg,#2ecc88,#157a52)',title:'Долг по ЖКХ, мать с двумя детьми',
-  story:'После развода накопились коммунальные долги. Боюсь, что зимой отключат свет и воду.',
-  raised:48200,goal:120000,supporters:312,link:'https://tips.cloudtips.ru/demo1'},
- {id:2,emoji:'💳',grad:'linear-gradient(140deg,#f0b429,#c07d10)',title:'Микрозаймы после сокращения',
-  story:'Попал под сокращение, перекрыл зарплату займами. Проценты съедают всё, что нахожу.',
-  raised:17900,goal:60000,supporters:128,link:'https://tips.cloudtips.ru/demo2'},
- {id:3,emoji:'🚗',grad:'linear-gradient(140deg,#5aa7e6,#2f6ea8)',title:'Штраф ФССП — под угрозой автомобиль',
-  story:'Машина — единственный способ работать. Если её заберут за долг, останусь без дохода совсем.',
-  raised:91400,goal:95000,supporters:540,link:'https://tips.cloudtips.ru/demo3'},
- {id:4,emoji:'🏥',grad:'linear-gradient(140deg,#e57a9a,#b04a6c)',title:'Кредитка после больницы',
-  story:'Три месяца без работы из-за операции. Долг по карте рос каждый день.',
-  raised:32500,goal:75000,supporters:201,link:'https://tips.cloudtips.ru/demo4'},
-];
-let myApps = JSON.parse(localStorage.getItem('fss_my_apps')||'[]');
-
-function plural(n,f){ const a=n%10,b=n%100;
-  if(a===1&&b!==11)return f[0]; if(a>=2&&a<=4&&(b<12||b>14))return f[1]; return f[2]; }
-
-/* ---------- render collections ---------- */
+/* ---------- лента ---------- */
+let collections=[];
+async function loadCollections(){
+  const r=await api('/api/collections');
+  collections=(r.ok&&r.items.length)?r.items:[];
+  renderList();buildWheel();
+}
 function renderList(){
-  $('#list').innerHTML = COLLECTIONS.map((c,i)=>{
-    const pct=Math.min(100,Math.round(c.raised/c.goal*100));
-    return `<div class="card" style="animation-delay:${i*70}ms">
-      <div class="top">
-        <div class="ava" style="background:${c.grad}">${c.emoji}</div>
-        <div style="flex:1">
-          <h3>${esc(c.title)}</h3>
-          <span class="badge"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>Проверено</span>
-        </div>
-      </div>
+  if(!collections.length){$('#list').innerHTML='<div class="empty"><div class="ic">🌱</div><h3>Сборов пока нет</h3><p>Стань первым — подай заявку на сбор.</p></div>';return;}
+  $('#list').innerHTML=collections.map((c,i)=>{
+    const pct=Math.min(100,Math.round((c.raised||0)/c.amount*100));
+    return `<div class="card" style="animation-delay:${i*60}ms">
+      <div class="top"><div class="ava" style="background:${GRADS[i%6]}">${EMO[i%6]}</div>
+      <div><h3>${esc(c.title||'Сбор')}</h3><span class="badge">✓ Проверено</span></div></div>
       <p class="story">${esc(c.story)}</p>
-      <div class="pbar"><i data-pct="${pct}"></i></div>
-      <div class="amounts">
-        <span class="r">${fmt(c.raised)} ₽</span>
-        <span class="g">из ${fmt(c.goal)} ₽ · ${pct}%</span>
-      </div>
-      <div class="foot">
-        <span class="sup">${c.supporters} ${plural(c.supporters,['человек поддержал','человека поддержали','человек поддержали'])}</span>
-        <button class="btn-support" data-link="${c.link}">
-          <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>
-          Поддержать
-        </button>
-      </div>
-    </div>`;
+      <div class="pbar"><i data-p="${pct}"></i></div>
+      <div class="amts"><span class="r">${fmt(c.raised||0)} ₽</span><span class="g">из ${fmt(c.amount)} ₽ · ${pct}%</span></div>
+      <div class="foot"><span class="sup">${c.supporters||0} поддержали</span>
+      <button class="bsup" data-l="${esc(c.link)}">❤️ Поддержать</button></div></div>`;
   }).join('');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    $$('#list .pbar i').forEach(b=>b.style.width=b.dataset.pct+'%');
-  }));
-  $$('#list .btn-support').forEach(b=>b.onclick=()=>{
+  requestAnimationFrame(()=>requestAnimationFrame(()=>$$('#list .pbar i').forEach(b=>b.style.width=b.dataset.p+'%')));
+  $$('#list .bsup').forEach(b=>b.onclick=()=>{haptic('medium');
+    if(tg&&tg.openLink){try{tg.openLink(b.dataset.l)}catch(e){location.href=b.dataset.l}}else location.href=b.dataset.l;
+    toast('Открываем страницу поддержки…');});
+}
+
+/* ---------- колесо ---------- */
+let rot=0,spinning=false;
+function buildWheel(){
+  const n=collections.length,svg=$('#wheelSvg');
+  if(n<2){svg.innerHTML='<circle cx="150" cy="150" r="140" fill="var(--sf2)"/><text x="150" y="155" text-anchor="middle" fill="var(--ink3)" font-size="14">пока мало сборов</text>';return;}
+  const seg=360/n;let h='';
+  for(let i=0;i<n;i++){
+    const a0=(i*seg-90)*Math.PI/180,a1=((i+1)*seg-90)*Math.PI/180;
+    const x0=150+140*Math.cos(a0),y0=150+140*Math.sin(a0),x1=150+140*Math.cos(a1),y1=150+140*Math.sin(a1);
+    h+=`<path d="M150,150 L${x0},${y0} A140,140 0 0 1 ${x1},${y1} Z" fill="${['#2ecc88','#f0b429','#5aa7e6','#e57a9a','#9a7ae6','#e6a15a'][i%6]}"/>`;
+    const am=((i+.5)*seg-90)*Math.PI/180;
+    h+=`<text x="${150+92*Math.cos(am)}" y="${150+92*Math.sin(am)+6}" text-anchor="middle" font-size="20">${EMO[i%6]}</text>`;
+  }
+  h+='<circle cx="150" cy="150" r="34" fill="var(--sf)"/><text x="150" y="157" text-anchor="middle" font-size="20">🤝</text>';
+  svg.innerHTML=h;
+}
+$('#spinBtn').onclick=()=>{
+  if(spinning||collections.length<2)return;
+  spinning=true;haptic('medium');$('#wheelRes').innerHTML='';$('#spinBtn').disabled=true;
+  rot+=5*360+Math.floor(Math.random()*360);
+  const svg=$('#wheelSvg');svg.style.transform=`rotate(${rot}deg)`;
+  setTimeout(()=>{
+    const n=collections.length,seg=360/n;
+    const idx=Math.floor((((360-rot%360)%360))/seg)%n;
+    const c=collections[idx];spinning=false;$('#spinBtn').disabled=false;haptic('success');
+    $('#wheelRes').innerHTML=`<div class="wres"><h3>${EMO[idx%6]} ${esc(c.title||'Сбор')}</h3>
+      <p>${esc(c.story)}</p>
+      <div class="abtns"><button class="okb" id="wSupp">❤️ Поддержать ${fmt(c.amount)} ₽</button>
+      <button class="nob" style="background:var(--sf2);color:var(--ink2)" id="wAgain">🎲 Ещё</button></div></div>`;
+    $('#wSupp').onclick=()=>{haptic('medium');if(tg&&tg.openLink){try{tg.openLink(c.link)}catch(e){location.href=c.link}}else location.href=c.link;};
+    $('#wAgain').onclick=()=>$('#spinBtn').click();
+  },4300);
+};
+
+/* ---------- мои ---------- */
+async function loadMine(){
+  const r=await api('/api/my');
+  const el=$('#mineList');
+  if(!r.ok){el.innerHTML='<div class="empty"><div class="ic">🔒</div><h3>Открой из Telegram</h3><p>Мои заявки видны внутри мини‑аппа в Telegram.</p></div>';return;}
+  if(!r.items.length){el.innerHTML='<div class="empty"><div class="ic">📭</div><h3>Пока нет заявок</h3><p>Подай первую — она появится здесь со статусом.</p></div>';return;}
+  const NM={pending:'⏳ На проверке',approved:'✅ Одобрено',rejected:'❌ Отклонено'};
+  el.innerHTML=r.items.map((a,i)=>`<div class="req" style="animation-delay:${i*50}ms">
+    <div class="h"><b>Заявка #${a.id}</b><span class="st ${a.status}">${NM[a.status]||a.status}</span></div>
+    <p class="story">${esc(a.story)}</p>
+    <div class="amts" style="margin:0"><span class="r">${fmt(a.amount)} ₽</span><span class="g">${new Date(a.created_at).toLocaleDateString('ru-RU')}</span></div></div>`).join('');
+}
+
+/* ---------- админ ---------- */
+async function loadAdmin(){
+  const s=await api('/api/admin/stats');
+  if(!s.ok){toast('Админка недоступна');return;}
+  $('#admStats').innerHTML=`<div class="stat"><b>${s.pending}</b><span>на проверке</span></div>
+    <div class="stat"><b>${s.approved}</b><span>в ленте</span></div>
+    <div class="stat"><b>${fmt(s.approved_sum)}</b><span>₽ целей</span></div>`;
+  const p=await api('/api/admin/list?status=pending');
+  $('#admPending').innerHTML=(p.ok&&p.items.length)?p.items.map(a=>`<div class="req">
+    <div class="h"><b>#${a.id} · ${fmt(a.amount)} ₽</b><span class="st pending">⏳</span></div>
+    <p class="story">${esc(a.story)}</p><div class="story" style="margin:0">🔗 ${esc(a.link)}<br>👤 ${esc(a.first_name||'Аноним')} @${esc(a.username||'—')}</div>
+    <div class="abtns"><button class="okb" data-act="approve" data-id="${a.id}">✅ Одобрить</button>
+    <button class="nob" data-act="reject" data-id="${a.id}">❌ Отклонить</button></div></div>`).join('')
+    :'<p class="story">Пусто 🎉</p>';
+  const all=await api('/api/admin/list');
+  $('#admAll').innerHTML=all.ok?all.items.slice(0,10).map(a=>`<div class="req"><div class="h"><b>#${a.id}</b><span class="st ${a.status}">${a.status}</span></div><p class="story" style="margin:0">${esc(a.title||a.story)}</p></div>`).join(''):'';
+  $$('#scr-admin [data-act]').forEach(b=>b.onclick=async()=>{
     haptic('medium');
-    const link=b.dataset.link;
-    if(tg&&tg.openLink){try{tg.openLink(link)}catch(e){location.href=link}}
-    else location.href=link;
-    toast('Открываем страницу поддержки…');
+    await api('/api/admin/action',{method:'POST',body:JSON.stringify({id:+b.dataset.id,action:b.dataset.act})});
+    toast(b.dataset.act==='approve'?'Одобрено ✅':'Отклонено ❌');
+    loadAdmin();loadCollections();
   });
 }
 
-/* ---------- render mine ---------- */
-const ST={pending:['pending','На проверке'],approved:['approved','Одобрено'],rejected:['rejected','Отклонено']};
-function renderMine(){
-  const el=$('#mineList');
-  if(!myApps.length){
-    el.innerHTML=`<div class="empty">
-      <div class="ic">📭</div>
-      <h3>Пока нет заявок</h3>
-      <p>Подайте первую заявку на сбор — она появится здесь со статусом проверки.</p>
-      <button class="btn pri" style="width:100%" onclick="document.getElementById('ctaApply').click()">Подать заявку</button>
-    </div>`;
-    return;
-  }
-  el.innerHTML=myApps.map((a,i)=>{
-    const s=ST[a.status]||ST.pending;
-    const d=new Date(a.ts).toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
-    return `<div class="req" style="animation-delay:${i*60}ms">
-      <div class="h"><span class="id">Заявка #${a.id}</span>
-        <span class="st ${s[0]}"><span class="d"></span>${s[1]}</span></div>
-      <p class="story">${esc(a.story)}</p>
-      <div class="m"><span><b>${fmt(a.amount)} ₽</b></span><span>${d}</span></div>
-    </div>`;
-  }).join('');
-  $('#mineDot').classList.remove('show');
-}
-
-/* ---------- tabs ---------- */
-function showScreen(id){
-  $$('.screen').forEach(s=>s.classList.remove('active'));
-  $('#'+id).classList.add('active');
-  window.scrollTo(0,0);
-}
-function switchTab(t){
-  haptic('light');
-  $$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
-  document.body.classList.remove('in-form');
-  if(t==='mine') renderMine();
-  showScreen('tab-'+t);
-}
+/* ---------- вкладки ---------- */
+function show(id){$$('.screen').forEach(s=>s.classList.remove('active'));$('#scr-'+id).classList.add('active');window.scrollTo(0,0);}
+function switchTab(t){haptic('light');$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
+  document.body.classList.remove('in-form');show(t);
+  if(t==='mine')loadMine();if(t==='admin')loadAdmin();if(t==='collections')loadCollections();}
 $$('.tab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
 
-/* ---------- form ---------- */
-let step=1, data={link:'',story:'',amt:'',c1:false,c2:false};
-function openForm(){ haptic('medium');
-  document.body.classList.add('in-form');
-  showScreen('screen-form'); go(1); }
-$('#ctaApply').onclick=openForm;
-
-function go(n){
-  step=n;
-  $('#s1').classList.toggle('hide',n!==1);
-  $('#s2').classList.toggle('hide',n!==2);
-  $$('#steps i').forEach((el,i)=>el.classList.toggle('on',i<n));
-  $('#stepTitle').textContent = n===1?'Шаг 1 из 2 · Цель и история':'Шаг 2 из 2 · Подтверждение';
-  $('#btnBack').textContent = n===1?'Отмена':'Назад';
-  $('#btnNext').textContent = n===2?'Отправить заявку':'Далее';
-  $('#btnNext').disabled=!valid(n);
-  if(n===2) buildSum();
-  window.scrollTo(0,0);
-}
-function valid(n){
-  if(n===1) return /https?:\/\//i.test(data.link) && data.story.trim().length>=10 && +data.amt>0;
-  if(n===2) return data.c1&&data.c2;
-  return false;
-}
-function buildSum(){
-  $('#sum').innerHTML=[
-    ['Сумма долга',fmt(+data.amt||0)+' ₽'],
-    ['CloudTips',data.link],
-    ['История',data.story.trim().slice(0,70)+(data.story.length>70?'…':'')],
-  ].map(r=>`<div class="li"><span class="k">${r[0]}</span><span class="v">${esc(r[1])}</span></div>`).join('');
-}
-
-const bind=(id,k,tr)=>$('#'+id).addEventListener('input',e=>{
-  data[k]=tr?tr(e.target.value):e.target.value;
-  $('#btnNext').disabled=!valid(step);
-});
-bind('fLink','link');
-bind('fStory','story');
+/* ---------- форма ---------- */
+let step=1,data={link:'',story:'',amt:'',c1:false,c2:false};
+$('#ctaApply').onclick=()=>{haptic('medium');document.body.classList.add('in-form');show('form');go(1);};
+function go(n){step=n;$('#s1').classList.toggle('hide',n!==1);$('#s2').classList.toggle('hide',n!==2);
+  $$('.steps i').forEach((e,i)=>e.classList.toggle('on',i<n));
+  $('#stepTitle').textContent=n===1?'Шаг 1 из 2 · Цель и история':'Шаг 2 из 2 · Подтверждение';
+  $('#btnBack').textContent=n===1?'Отмена':'Назад';
+  $('#btnNext').textContent=n===2?'Отправить заявку':'Далее';
+  $('#btnNext').disabled=!valid(n);if(n===2)buildSum();window.scrollTo(0,0);}
+function valid(n){if(n===1)return /https?:\/\//.test(data.link)&&data.story.trim().length>=10&&+data.amt>0;return data.c1&&data.c2;}
+function buildSum(){$('#sum').innerHTML=[['Сумма',fmt(+data.amt||0)+' ₽'],['CloudTips',data.link],['История',data.story.slice(0,70)+(data.story.length>70?'…':'')]]
+  .map(r=>`<div class="li"><span class="k">${r[0]}</span><span class="v">${esc(r[1])}</span></div>`).join('');}
+const bind=(id,k,tr)=>$('#'+id).addEventListener('input',e=>{data[k]=tr?tr(e.target.value):e.target.value;$('#btnNext').disabled=!valid(step);});
+bind('fLink','link');bind('fStory','story');
 $('#fStory').addEventListener('input',e=>$('#cc').textContent=e.target.value.length);
 bind('fAmt','amt',v=>v.replace(/\D/g,''));
 $('#fAmt').addEventListener('input',e=>{const n=+data.amt;e.target.value=n?fmt(n):'';});
 $('#c1').onclick=()=>{data.c1=!data.c1;$('#c1').classList.toggle('on',data.c1);haptic('light');$('#btnNext').disabled=!valid(2);};
 $('#c2').onclick=()=>{data.c2=!data.c2;$('#c2').classList.toggle('on',data.c2);haptic('light');$('#btnNext').disabled=!valid(2);};
-
-$('#btnBack').onclick=()=>{ haptic('light');
-  if(step>1) go(step-1);
-  else switchTab('collections');
-};
-$('#btnNext').onclick=()=>{ haptic('medium');
-  if(!valid(step)){toast('Заполните все поля корректно');return;}
-  if(step<2) go(step+1); else submit();
-};
-
-function submit(){
-  const id = myApps.length? Math.max(...myApps.map(a=>a.id))+1 : 1;
-  const app={id,link:data.link,story:data.story,amount:+data.amt,status:'pending',ts:Date.now()};
-  myApps.unshift(app);
-  localStorage.setItem('fss_my_apps',JSON.stringify(myApps));
-  $('#mineDot').classList.add('show');
-
-  const payload={type:'new_application',id,link:data.link,story:data.story,amount:+data.amt,ts:Date.now(),
-    user: tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user ? {
-      id:tg.initDataUnsafe.user.id,
-      username:tg.initDataUnsafe.user.username||'',
-      first_name:tg.initDataUnsafe.user.first_name||''
-    }:null};
-  if(tg&&tg.sendData){try{tg.sendData(JSON.stringify(payload));}catch(e){}}
-  console.log('[FSS] заявка:',payload);
-
-  haptic('success');
-  showScreen('screen-ok');
-}
+$('#btnBack').onclick=()=>{haptic('light');step>1?go(step-1):switchTab('collections');};
+$('#btnNext').onclick=async()=>{haptic('medium');
+  if(!valid(step))return toast('Заполните поля');
+  if(step<2)return go(step+1);
+  const r=await api('/api/applications',{method:'POST',body:JSON.stringify({link:data.link,story:data.story,amount:+data.amt})});
+  if(!r.ok)return toast(r.error||'Ошибка. Открой из Telegram.');
+  haptic('success');show('ok');};
 $('#btnToMine').onclick=()=>switchTab('mine');
 
-/* ---------- init ---------- */
-renderList();
-renderMine();
+/* старт */
+loadCollections();
 })();
 </script>
 </body>
