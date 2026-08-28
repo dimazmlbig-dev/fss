@@ -104,7 +104,8 @@ def verify_init_data(init_data: str):
       secret_key = sha256(bot_token)
       hash = hmac_sha256(secret_key, data_check_string)
     """
-    if not init_data:
+    # If we don't have init data or a bot token, verification is not possible
+    if not init_data or not BOT_TOKEN:
         return None
     try:
         p = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
@@ -115,8 +116,8 @@ def verify_init_data(init_data: str):
         data_check_arr = [f"{k}={v}" for k, v in sorted(p.items())]
         data_check_string = "\n".join(data_check_arr)
         # correct secret: SHA256 of bot token
-        secret_key = hashlib.sha256(BOT_TOKEN.encode()).digest()
-        calc_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        secret_key = hashlib.sha256(BOT_TOKEN.encode("utf-8")).digest()
+        calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(calc_hash, h):
             return None
         # user field is JSON string
@@ -285,7 +286,7 @@ async def h_submit(req):
 async def h_admin_stats(req):
     if not is_admin(get_user(req)):
         return web.json_response({"ok": False}, status=403)
-    g = lambda s: conn.execute("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM applications WHERE status=?", (s,)).fetchone()
+    g = lambda s: conn.execute("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM applications WHERE status=?)", (s,)).fetchone()
     p, a = g("pending"), g("approved")
     return web.json_response({"ok": True, "pending": p[0], "approved": a[0], "approved_sum": a[1]})
 
