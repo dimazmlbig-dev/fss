@@ -355,6 +355,25 @@ async def h_admin_action(req):
     set_status(int(b["id"]), "approved" if b.get("action") == "approve" else "rejected")
     return web.json_response({"ok": True})
 
+async def h_support(req):
+    try:
+        b = await req.json()
+        app_id = int(b.get("id") or 0)
+        amount = int(b.get("amount") or 0)
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad params"}, status=400)
+    if app_id <= 0 or amount < 0:
+        return web.json_response({"ok": False, "error": "bad params"}, status=400)
+    conn.execute(
+        "UPDATE applications SET raised = raised + ?, supporters = supporters + 1 WHERE id=? AND status='approved'",
+        (amount, app_id),
+    )
+    conn.commit()
+    row = conn.execute("SELECT raised, supporters FROM applications WHERE id=?", (app_id,)).fetchone()
+    if not row:
+        return web.json_response({"ok": False, "error": "not found"}, status=404)
+    log.info("support | app=%s +%s ₽ → raised=%s", app_id, amount, row[0])
+    return web.json_response({"ok": True, "raised": row[0], "supporters": row[1]})
 
 # ═══════════ ЗАПУСК ═══════════
 async def main():
