@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 import sqlite3
 import urllib.parse
@@ -9,6 +10,9 @@ from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
+log = logging.getLogger("fss")
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -20,7 +24,7 @@ PORT = int(os.getenv("PORT", "8080"))
 bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 np = None
 if bot is None:
-    print("WARNING: BOT_TOKEN is not set. Bot functionality will be disabled.")
+    log.warning("BOT_TOKEN is not set. Bot functionality will be disabled.")
 
 dp = Dispatcher()
 
@@ -97,36 +101,41 @@ def row2dict(r):
 
 # ═══════════ ПРОВЕРКА ПОДПИСИ TELEGRAM (Web App) ═══════════
 def verify_init_data(init_data: str):
-    """Verify Telegram Web App init data string and return parsed user dict or None.
+    """Проверка подписи initData по официальному алгоритму Telegram.
 
-    Telegram recommends building the data_check_string from received fields and
-    comparing HMAC-SHA256 with a secret derived from the bot token:
-      secret_key = sha256(bot_token)
-      hash = hmac_sha256(secret_key, data_check_string)
+    Алгоритм:
+      1) Собрать data_check_string из сортированных по имени параметров (k=v) через '\n'
+      2) secret_key = HMAC_SHA256(key=b"WebAppData", msg=BOT_TOKEN)
+      3) calc_hash = HMAC_SHA256(secret_key, data_check_string)
+      4) Сравнить calc_hash (hex) с полем hash
     """
-    # If we don't have init data or a bot token, verification is not possible
-    if not init_data or not BOT_TOKEN:
+    if not init_data:
+        log.debug("verify: пустой init_data (возможен прямой доступ из браузера)")
+        return None
+    if not BOT_TOKEN:
+        log.warning("verify: BOT_TOKEN не задан — проверка невозможна")
         return None
     try:
         p = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
         h = p.pop("hash", None)
         if not h:
+            log.warning("verify: в init_data нет поля hash")
             return None
-        # build data_check_string
-        data_check_arr = [f"{k}={v}" for k, v in sorted(p.items())]
-        data_check_string = "\n".join(data_check_arr)
-        # correct secret: SHA256 of bot token
-        secret_key = hashlib.sha256(BOT_TOKEN.encode("utf-8")).digest()
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
+        # секрет: HMAC-SHA256 с ключом 'WebAppData' и сообщением = BOT_TOKEN
+        secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode("utf-8"), hashlib.sha256).digest()
         calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(calc_hash, h):
+            log.warning("verify: подпись init_data не совпала (чужой токен или подмена данных)")
             return None
-        # user field is JSON string
         user_json = p.get("user", "{}")
         try:
             return json.loads(user_json)
         except Exception:
+            log.warning("verify: не удалось распарсить поле user")
             return None
-    except Exception:
+    except Exception as e:
+        log.exception("verify: неожиданная ошибка: %s", e)
         return None
 
 
@@ -168,7 +177,7 @@ async def notify_admin(app_id: int):
         msg += f"\n🆔 ID: <code>{a.get('user_id','—')}</code>\n\n<i>Статус: ожидает модерации</i>"
         await bot.send_message(ADMIN_CHAT_ID, msg, parse_mode="HTML", reply_markup=kb)
     except Exception as e:
-        print("notify_admin error:", e)
+        log.exception("notify_admin error: %s", e)
 
 
 async def notify_user(a: dict, approved: bool):
@@ -254,6 +263,7 @@ async def h_collections(req):
 async def h_my(req):
     user = get_user(req)
     if not user:
+        log.info("401 | /api/my | init_data не прошёл проверку")
         return web.json_response({"ok": False, "error": "auth"}, status=401)
     rows = conn.execute("SELECT * FROM applications WHERE user_id=? ORDER BY id DESC", (user.get("id"),)).fetchall()
     return web.json_response({"ok": True, "items": [row2dict(r) for r in rows]})
@@ -262,6 +272,7 @@ async def h_my(req):
 async def h_submit(req):
     user = get_user(req)
     if not user:
+        log.info("401 | /api/applications | init_data не прошёл проверку")
         return web.json_response({"ok": False, "error": "Открой приложение из Telegram"}, status=401)
     b = await req.json()
     link = str(b.get("link", "")).strip()
@@ -285,6 +296,7 @@ async def h_submit(req):
 
 async def h_admin_stats(req):
     if not is_admin(get_user(req)):
+        log.info("403 | /api/admin/stats | не админ")
         return web.json_response({"ok": False}, status=403)
     g = lambda s: conn.execute("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM applications WHERE status=?", (s,)).fetchone()
     p, a = g("pending"), g("approved")
@@ -293,6 +305,7 @@ async def h_admin_stats(req):
 
 async def h_admin_list(req):
     if not is_admin(get_user(req)):
+        log.info("403 | /api/admin/list | не админ")
         return web.json_response({"ok": False}, status=403)
     s = req.query.get("status")
     if s:
@@ -304,6 +317,7 @@ async def h_admin_list(req):
 
 async def h_admin_action(req):
     if not is_admin(get_user(req)):
+        log.info("403 | /api/admin/action | не админ")
         return web.json_response({"ok": False}, status=403)
     b = await req.json()
     set_status(int(b["id"]), "approved" if b.get("action") == "approve" else "rejected")
@@ -324,7 +338,7 @@ async def main():
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
-    print(f"🌐 API на порту {PORT}, 🤖 бот стартует…")
+    log.info(f"🌐 API на порту {PORT}, 🤖 бот стартует…")
     if bot:
         await dp.start_polling(bot)
     else:
