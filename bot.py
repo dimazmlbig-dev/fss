@@ -5,7 +5,9 @@ import json
 import logging
 import os
 import sqlite3
+import time
 import urllib.parse
+from collections import defaultdict, deque
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types
@@ -21,6 +23,8 @@ ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
 MINIAPP_URL   = os.getenv("MINIAPP_URL", "")
 DB_PATH       = os.getenv("DB_PATH", "fss.db")
 PORT          = int(os.getenv("PORT", "8080"))
+
+ALLOWED_SUPPORT_AMOUNTS = (100, 300, 500, 1000)
 
 bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 if bot is None:
@@ -77,6 +81,18 @@ def make_title(story: str) -> str:
 def row2dict(r):
     return dict(r) if r else None
 
+# ═══════════ RATE LIMIT ═══════════
+RL = defaultdict(deque)
+def rate_limited(key: str, max_n: int, window: float) -> bool:
+    now = time.time()
+    dq = RL[key]
+    while dq and now - dq[0] > window:
+        dq.popleft()
+    if len(dq) >= max_n:
+        return True
+    dq.append(now)
+    return False
+
 # ═══════════ ПРОВЕРКА ПОДПИСИ TELEGRAM ═══════════
 def verify_init_data(init_data: str):
     if not init_data:
@@ -91,8 +107,15 @@ def verify_init_data(init_data: str):
         if not h:
             log.warning("verify: в init_data нет поля hash")
             return None
+        # свежесть: initData старше 24 часов не принимаем (анти-replay)
+        try:
+            auth_date = int(p.get("auth_date", "0"))
+        except Exception:
+            auth_date = 0
+        if not auth_date or abs(time.time() - auth_date) > 86400:
+            log.warning("verify: просроченный auth_date")
+            return None
         data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
-        # Официальный алгоритм: secret = HMAC_SHA256(key="WebAppData", msg=bot_token)
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode("utf-8"), hashlib.sha256).digest()
         calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(calc_hash, h):
@@ -195,11 +218,22 @@ async def cb_mod(cb: types.CallbackQuery):
 
 # ═══════════ API ═══════════
 @web.middleware
+async def limiter(req, handler):
+    ip = req.remote or "unknown"
+    if rate_limited("ip:" + ip, 120, 60):
+        log.warning("rate-limit | ip=%s", ip)
+        return web.json_response({"ok": False, "error": "too many requests"}, status=429)
+    return await handler(req)
+
+@web.middleware
 async def cors(req, handler):
     resp = web.Response() if req.method == "OPTIONS" else await handler(req)
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Telegram-InitData"
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "no-referrer"
     return resp
 
 async def h_collections(req):
@@ -219,14 +253,16 @@ async def h_submit(req):
     if not user:
         log.info("401 | /api/applications")
         return web.json_response({"ok": False, "error": "Открой приложение из Telegram"}, status=401)
+    if rate_limited(f"sub:{user.get('id')}", 5, 600):
+        return web.json_response({"ok": False, "error": "Слишком много заявок, попробуйте позже"}, status=429)
     b = await req.json()
-    link = str(b.get("link", "")).strip()
-    story = str(b.get("story", "")).strip()
+    link = str(b.get("link", "")).strip()[:300]
+    story = str(b.get("story", "")).strip()[:500]
     try:
         amount = int(b.get("amount") or 0)
     except Exception:
         amount = 0
-    if not (link.startswith("http") and len(story) >= 10 and amount > 0):
+    if not (link.startswith("https://") and len(story) >= 10 and 0 < amount <= 10_000_000):
         return web.json_response({"ok": False, "error": "Проверьте поля"}, status=400)
     cur = conn.execute(
         "INSERT INTO applications (title,link,story,amount,user_id,username,first_name) VALUES (?,?,?,?,?,?,?)",
@@ -237,13 +273,18 @@ async def h_submit(req):
     return web.json_response({"ok": True, "id": cur.lastrowid})
 
 async def h_support(req):
+    user = get_user(req)
+    if not user:
+        return web.json_response({"ok": False, "error": "auth"}, status=401)
+    if rate_limited(f"supfast:{user.get('id')}", 1, 3) or rate_limited(f"sup:{user.get('id')}", 30, 3600):
+        return web.json_response({"ok": False, "error": "Помедленнее 🐢"}, status=429)
     try:
         b = await req.json()
         app_id = int(b.get("id") or 0)
         amount = int(b.get("amount") or 0)
     except Exception:
         return web.json_response({"ok": False, "error": "bad params"}, status=400)
-    if app_id <= 0 or amount < 0:
+    if app_id <= 0 or amount not in ALLOWED_SUPPORT_AMOUNTS:
         return web.json_response({"ok": False, "error": "bad params"}, status=400)
     conn.execute(
         "UPDATE applications SET raised = raised + ?, supporters = supporters + 1 WHERE id=? AND status='approved'",
@@ -253,7 +294,7 @@ async def h_support(req):
     row = conn.execute("SELECT raised, supporters FROM applications WHERE id=?", (app_id,)).fetchone()
     if not row:
         return web.json_response({"ok": False, "error": "not found"}, status=404)
-    log.info("support | app=%s +%s ₽ → raised=%s", app_id, amount, row[0])
+    log.info("support | user=%s app=%s +%s ₽ → raised=%s", user.get("id"), app_id, amount, row[0])
     return web.json_response({"ok": True, "raised": row[0], "supporters": row[1]})
 
 async def h_admin_stats(req):
@@ -283,10 +324,25 @@ async def h_admin_action(req):
     set_status(int(b["id"]), "approved" if b.get("action") == "approve" else "rejected")
     return web.json_response({"ok": True})
 
+async def h_admin_delete(req):
+    if not is_admin(get_user(req)):
+        log.info("403 | /api/admin/delete")
+        return web.json_response({"ok": False}, status=403)
+    try:
+        app_id = int((await req.json()).get("id") or 0)
+    except Exception:
+        app_id = 0
+    if app_id <= 0:
+        return web.json_response({"ok": False, "error": "bad params"}, status=400)
+    conn.execute("DELETE FROM applications WHERE id=?", (app_id,))
+    conn.commit()
+    log.info("delete | app=%s удалено админом", app_id)
+    return web.json_response({"ok": True})
+
 # ═══════════ ЗАПУСК ═══════════
 async def main():
     init_db()
-    app = web.Application(middlewares=[cors])
+    app = web.Application(middlewares=[limiter, cors], client_max_size=64 * 1024)
     app.router.add_get("/api/health", lambda r: web.json_response({"ok": True}))
     app.router.add_get("/api/collections", h_collections)
     app.router.add_get("/api/my", h_my)
@@ -295,6 +351,7 @@ async def main():
     app.router.add_get("/api/admin/stats", h_admin_stats)
     app.router.add_get("/api/admin/list", h_admin_list)
     app.router.add_post("/api/admin/action", h_admin_action)
+    app.router.add_post("/api/admin/delete", h_admin_delete)
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
