@@ -286,7 +286,7 @@ async def h_submit(req):
 async def h_admin_stats(req):
     if not is_admin(get_user(req)):
         return web.json_response({"ok": False}, status=403)
-    g = lambda s: conn.execute("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM applications WHERE status=?)", (s,)).fetchone()
+    g = lambda s: conn.execute("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM applications WHERE status=?", (s,)).fetchone()
     p, a = g("pending"), g("approved")
     return web.json_response({"ok": True, "pending": p[0], "approved": a[0], "approved_sum": a[1]})
 
