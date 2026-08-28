@@ -294,6 +294,38 @@ async def h_submit(req):
     return web.json_response({"ok": True, "id": new_id})
 
 
+# New endpoint: support (increment raised/supporters)
+async def h_support(req):
+    # optional user — anyone (even outside Telegram) can support; initData used for provenance
+    try:
+        b = await req.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "invalid_json"}, status=400)
+    try:
+        app_id = int(b.get("id"))
+    except Exception:
+        return web.json_response({"ok": False, "error": "missing_id"}, status=400)
+    try:
+        amount = int(b.get("amount") or 0)
+    except Exception:
+        amount = 0
+    # update DB: increase supporters by 1 and raised by amount
+    try:
+        if amount > 0:
+            conn.execute("UPDATE applications SET raised = COALESCE(raised,0) + ?, supporters = COALESCE(supporters,0) + 1 WHERE id=?", (amount, app_id))
+        else:
+            conn.execute("UPDATE applications SET supporters = COALESCE(supporters,0) + 1 WHERE id=?", (app_id,))
+        conn.commit()
+        row = conn.execute("SELECT id,raised,supporters FROM applications WHERE id=?", (app_id,)).fetchone()
+        if not row:
+            return web.json_response({"ok": False, "error": "not_found"}, status=404)
+        log.info("support: app_id=%s amount=%s", app_id, amount)
+        return web.json_response({"ok": True, "id": row["id"], "raised": row["raised"], "supporters": row["supporters"]})
+    except Exception as e:
+        log.exception("support: db error %s", e)
+        return web.json_response({"ok": False, "error": "db"}, status=500)
+
+
 async def h_admin_stats(req):
     if not is_admin(get_user(req)):
         log.info("403 | /api/admin/stats | не админ")
@@ -332,6 +364,7 @@ async def main():
     app.router.add_get("/api/collections", h_collections)
     app.router.add_get("/api/my", h_my)
     app.router.add_post("/api/applications", h_submit)
+    app.router.add_post("/api/support", h_support)
     app.router.add_get("/api/admin/stats", h_admin_stats)
     app.router.add_get("/api/admin/list", h_admin_list)
     app.router.add_post("/api/admin/action", h_admin_action)
