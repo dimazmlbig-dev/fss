@@ -257,3 +257,125 @@ body.in-form .tabbar{display:none}
       </div>
     </div>
   </section>
+<section class="screen" id="scr-wheel">
+    <div class="wtop">
+      <h2 class="wtitle">Колесо добра 🎡</h2>
+      <div class="wcoins">🤝 <b id="wTotal">0</b></div>
+    </div>
+    <div class="slot" id="slot">
+      <div class="col" id="slotCol"></div>
+      <div class="mark l"></div><div class="mark r"></div>
+      <div class="speed"></div>
+    </div>
+    <button class="wspin" id="spinBtn">🎲 ВРАЩАТЬ</button>
+    <p class="wlegal">Нажимая «Вращать», ты просто делаешь добро 💚</p>
+
+    <div class="wresult" id="wresult">
+      <div class="ray rl"></div><div class="ray rr"></div>
+      <span class="spark s1">✦</span><span class="spark s2">✦</span><span class="spark s3">✦</span>
+      <button class="wclose" id="wClose">✕</button>
+      <div id="wTicket"></div>
+      <div class="wtimer" id="wTimer">24:00:00</div>
+      <h2 class="wres-title" id="wResTitle"></h2>
+      <p class="wres-sub" id="wResSub"></p>
+      <div class="wres-btns">
+        <button class="wcopy" id="wCopy">📋 Ссылка</button>
+        <button class="wsup" id="wSup">❤️ Поддержать</button>
+      </div>
+      <button class="wagain" id="wAgain">↻ Крутить ещё</button>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-mine"><h2 class="tt">Мои заявки</h2><div id="mineList"></div></section>
+
+  <section class="screen" id="scr-admin">
+    <h2 class="tt">Админ‑панель 🛠</h2>
+    <div class="stats" id="admStats"></div>
+    <div id="admDebug"></div>
+    <h2 class="sm">⏳ На модерации</h2><div id="admPending"></div>
+    <h2 class="sm">Все заявки</h2><div id="admAll"></div>
+  </section>
+
+  <section class="screen" id="scr-form">
+    <div class="steps"><i class="on"></i><i></i></div>
+    <h2 class="tt" id="stepTitle">Шаг 1 из 2 · Цель и история</h2>
+    <div id="s1"><div class="fcard glass">
+      <div class="field"><label>Ссылка на цель CloudTips</label><input class="inp" id="fLink" placeholder="https://tips.cloudtips.ru/..."></div>
+      <div class="field"><label>История (от 10 символов)</label><textarea class="inp" id="fStory" maxlength="500" placeholder="Расскажите, почему нужна помощь…"></textarea><div class="cnt"><span id="cc">0</span>/500</div></div>
+      <div class="field"><label>Сумма долга, ₽</label><input class="inp" id="fAmt" placeholder="120 000" inputmode="numeric"></div>
+    </div></div>
+    <div id="s2" class="hide"><div class="fcard glass">
+      <div class="sum" id="sum"></div>
+      <label class="check" id="c1"><span class="bx"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span><span>Согласен на обработку данных по 152‑ФЗ</span></label>
+      <label class="check" id="c2"><span class="bx"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span><span>Понимаю, что заявка публикуется анонимно</span></label>
+    </div></div>
+    <div class="rbtns"><button class="btn sec" id="btnBack">Назад</button><button class="btn pri" id="btnNext">Далее</button></div>
+  </section>
+
+  <section class="screen" id="scr-ok"><div class="okwrap">
+    <div class="tk"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+    <h2>Заявка отправлена</h2>
+    <p>Админ получит её на модерацию. Статус — во вкладке «Мои».</p>
+    <button class="btn pri" id="btnToMine" style="width:100%">К моим заявкам</button>
+  </div></section>
+</main>
+
+<nav class="tabbar">
+  <button class="tab active" data-tab="collections"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>Лента</button>
+  <button class="tab" data-tab="wheel"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>Колесо</button>
+  <button class="tab" data-tab="mine"><svg viewBox="0 0 24 24"><path d="M9 6l2 2 4-4M9 12l2 2 4-4M9 18l2 2 4-4M16 6h4M16 12h4M16 18h4"/></svg>Мои</button>
+  <button class="tab hide" data-tab="admin" id="adminTab"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/></svg>Админ</button>
+</nav>
+
+<div class="ovl" id="ovl"></div>
+<div class="sheet" id="sheet">
+  <h3>Поддержать сбор</h3>
+  <p class="ss">Выбери сумму — счётчик обновится у всех, оплата пойдёт на CloudTips.</p>
+  <div class="chips" id="chips">
+    <button class="chip" data-a="100">100 ₽</button>
+    <button class="chip on" data-a="300">300 ₽</button>
+    <button class="chip" data-a="500">500 ₽</button>
+    <button class="chip" data-a="1000">1000 ₽</button>
+  </div>
+  <button class="btn pri" id="shGo" style="width:100%">❤️ Поддержать и перейти</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+const q=new URLSearchParams(location.search);
+const API=q.get('api')||(document.querySelector('meta[name="api-base"]')||{}).content||"https://fss-production-4ebb.up.railway.app";
+const ADMIN_ID=+(q.get('admin')||1720219688);
+const tg=window.Telegram&&window.Telegram.WebApp;
+if(tg){try{tg.ready();tg.expand();}catch(e){}}
+const haptic=t=>{try{tg&&tg.HapticFeedback&&tg.HapticFeedback.impactOccurred(t||'light')}catch(e){}};
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n).toLocaleString('ru-RU');
+const GRADS=['linear-gradient(140deg,#8fbf9a,#5d9468)','linear-gradient(140deg,#e4c989,#c9a355)','linear-gradient(140deg,#9db8d0,#6d8fae)','linear-gradient(140deg,#d0a8b8,#b07f92)','linear-gradient(140deg,#b8a8d8,#8f7fb5)','linear-gradient(140deg,#d8bc9a,#b5946d)'];
+const EMO=['🏠','💳','🚗','','📚',''];
+
+let tt;function toast(m){const e=$('#toast');e.textContent=m;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2400);}
+
+async function api(path,opts={}){
+  const h=opts.headers||{};
+  if(tg&&tg.initData)h['X-Telegram-InitData']=tg.initData;
+  if(opts.body)h['Content-Type']='application/json';
+  try{const r=await fetch(API+path,{...opts,headers:h});return await r.json();}
+  catch(e){return{ok:false,error:String(e)};}
+}
+function countUp(el,to,dur=900){
+  const from=+(el.dataset.cur||0),t0=performance.now();
+  function f(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    el.textContent=fmt(Math.round(from+(to-from)*e))+' ₽';
+    if(p<1)requestAnimationFrame(f);else el.dataset.cur=to;}
+  requestAnimationFrame(f);
+}
+const meId=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user.id:null;
+if(meId===ADMIN_ID)$('#adminTab').classList.remove('hide');
+
+/* самодиагностика auth */
+async function authDebugHTML(){
+  const d=await api('/api/debug_auth');
+  return `<p style="margin-top:10px;font-size:12px;color:var(--ink3)">🔍 header: ${d.header_present?'✅ есть':'❌ нет'} · token на сервере: ${d.token_set?'✅':'❌ НЕТ'} · подпись: ${d.hash_match===true?'✅ совпадает':(d.hash_match===false?'❌ НЕ совпадает':'—')}<br>сервер ждёт admin_id ${d.admin_id}, у тебя ${meId}${d.user_id?' · initData user '+d.user_id:''}</p>`;
+}
