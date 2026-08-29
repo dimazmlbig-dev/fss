@@ -521,4 +521,108 @@ $('#spinBtn').onclick=()=>{
 };
 $('#wClose').onclick=()=>$('#wresult').classList.remove('open');
 $('#wAgain').onclick=()=>{$('#wresult').classList.remove('open');setTimeout(()=>$('#spinBtn').click(),350);};
-$('#wCopy').onclick=async()=>{haptic('light');try{await navigator.clipboard.writeText(winn
+$('#wCopy').onclick=async()=>{haptic('light');try{await navigator.clipboard.writeText(winner.link);}catch(e){}toast('📋');};
+$('#wSup').onclick=()=>{haptic('medium');openSheet(winner.id);};
+
+/* мои */
+async function loadMine(){
+  const r=await api('/api/my'),el=$('#mineList');
+  if(!r.ok){
+    el.innerHTML=`<div class="empty"><div class="ic">🔒</div><h3>${t('locked')}</h3><p>${t('lockedP')}</p>${await authDebugHTML()}</div>`;return;}
+  if(!r.items.length){el.innerHTML=`<div class="empty"><div class="ic">📭</div><h3>${t('emptyM1')}</h3><p>${t('emptyM2')}</p></div>`;return;}
+  const NM={pending:'⏳',approved:'✅',rejected:'❌'};
+  el.innerHTML=r.items.map((a,i)=>`<div class="req glass" style="animation-delay:${i*50}ms">
+    <div class="h"><b>#{a.id}</b>.replace('#{a.id}','Заявка #'+a.id)<span class="st ${a.status}">${NM[a.status]||a.status}</span></div>
+    <p class="story">${esc(a.story)}</p>
+    <div class="amts" style="margin:0"><span class="r" style="font-size:14px">${fmt(a.amount)} ₽</span><span class="g">${new Date(a.created_at).toLocaleDateString('ru-RU')}</span></div></div>`).join('');
+}
+
+/* админ */
+async function loadAdmin(){
+  const s=await api('/api/admin/stats');
+  if(!s.ok){
+    $('#admDebug').innerHTML=`<div class="req glass"><b>🔍</b>${await authDebugHTML()}</div>`;
+    toast('403');return;
+  }
+  $('#admDebug').innerHTML='';
+  $('#admStats').innerHTML=`<div class="stat glass"><b>${s.pending}</b><span>${t('stPend')}</span></div>
+    <div class="stat glass"><b>${s.approved}</b><span>${t('stLive')}</span></div>
+    <div class="stat glass"><b>${fmt(s.approved_sum)}</b><span>${t('stSum')}</span></div>`;
+  const p=await api('/api/admin/list?status=pending');
+  $('#admPending').innerHTML=(p.ok&&p.items.length)?p.items.map(a=>`<div class="req glass">
+    <div class="h"><b>#${a.id} · ${fmt(a.amount)} ₽</b><span class="st pending">⏳</span></div>
+    <p class="story">${esc(a.story)}</p><p class="story" style="margin:0">🔗 ${esc(a.link)}<br>👤 ${esc(a.first_name||'—')} @${esc(a.username||'—')}</p>
+    <div class="abtns"><button class="okb" data-act="approve" data-id="${a.id}">${t('appr')}</button>
+    <button class="nob" data-act="reject" data-id="${a.id}">${t('rej')}</button></div></div>`).join(''):'<p class="wlegal" style="color:var(--ink3)">🎉</p>';
+  const all=await api('/api/admin/list');
+  $('#admAll').innerHTML=all.ok?all.items.slice(0,10).map(a=>`<div class="req glass"><div class="h"><b>#${a.id}</b><span class="st ${a.status}">${a.status}</span></div><p class="story" style="margin:0">${esc(a.title||a.story)}</p>
+    <div class="abtns"><button class="nob" data-del="${a.id}">${t('del')}</button></div></div>`).join(''):'';
+  $$('#scr-admin [data-act]').forEach(b=>b.onclick=async()=>{
+    haptic('medium');
+    await api('/api/admin/action',{method:'POST',body:JSON.stringify({id:+b.dataset.id,action:b.dataset.act})});
+    toast(b.dataset.act==='approve'?'✅':'❌');
+    loadAdmin();loadCollections();
+  });
+  $$('#scr-admin [data-del]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('#'+b.dataset.del+'?'))return;
+    haptic('medium');
+    await api('/api/admin/delete',{method:'POST',body:JSON.stringify({id:+b.dataset.del})});
+    toast('🗑');
+    loadAdmin();loadCollections();
+  });
+}
+
+/* вкладки */
+function show(id){$$('.screen').forEach(s=>s.classList.remove('active'));$('#scr-'+id).classList.add('active');window.scrollTo(0,0);}
+function switchTab(t2){haptic('light');$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t2));
+  document.body.classList.remove('in-form');
+  document.body.classList.toggle('wheel-on',t2==='wheel');
+  show(t2);
+  if(t2==='wheel')buildSlot();
+  if(t2==='mine')loadMine();if(t2==='admin')loadAdmin();if(t2==='collections')loadCollections();}
+$$('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+
+/* форма */
+let step=1,data={link:'',story:'',amt:'',c1:false,c2:false};
+$('#ctaApply').onclick=()=>{haptic('medium');document.body.classList.add('in-form');show('form');go(1);};
+function go(n){step=n;$('#s1').classList.toggle('hide',n!==1);$('#s2').classList.toggle('hide',n!==2);
+  $$('.steps i').forEach((e,i)=>e.classList.toggle('on',i<n));
+  $('#stepTitle').textContent=t(n===1?'step1':'step2');
+  $('#btnBack').textContent=n===1?t('cancel'):t('back');
+  $('#btnNext').textContent=n===2?t('sendApp'):t('next');
+  $('#btnNext').disabled=!valid(n);if(n===2)buildSum();window.scrollTo(0,0);}
+function valid(n){if(n===1)return /https?:\/\//.test(data.link)&&data.story.trim().length>=10&&+data.amt>0;return data.c1&&data.c2;}
+function buildSum(){$('#sum').innerHTML=[[t('lSum'),fmt(+data.amt||0)+' ₽'],['CloudTips',data.link],[t('lStory'),data.story.slice(0,70)+(data.story.length>70?'…':'')]]
+  .map(r=>`<div class="li"><span class="k">${r[0]}</span><span class="v">${esc(r[1])}</span></div>`).join('');}
+const bind=(id,k,tr)=>$('#'+id).addEventListener('input',e=>{data[k]=tr?tr(e.target.value):e.target.value;$('#btnNext').disabled=!valid(step);});
+bind('fLink','link');bind('fStory','story');
+$('#fStory').addEventListener('input',e=>$('#cc').textContent=e.target.value.length);
+bind('fAmt','amt',v=>v.replace(/\D/g,''));
+$('#fAmt').addEventListener('input',e=>{const n=+data.amt;e.target.value=n?fmt(n):'';});
+$('#c1').onclick=()=>{data.c1=!data.c1;$('#c1').classList.toggle('on',data.c1);haptic('light');$('#btnNext').disabled=!valid(2);};
+$('#c2').onclick=()=>{data.c2=!data.c2;$('#c2').classList.toggle('on',data.c2);haptic('light');$('#btnNext').disabled=!valid(2);};
+$('#btnBack').onclick=()=>{haptic('light');step>1?go(step-1):switchTab('collections');};
+$('#btnNext').onclick=async()=>{haptic('medium');
+  if(!valid(step))return toast('…');
+  if(step<2)return go(step+1);
+  const r=await api('/api/applications',{method:'POST',body:JSON.stringify({link:data.link,story:data.story,amount:+data.amt})});
+  if(!r.ok)return toast(r.error||'…');
+  haptic('success');show('ok');};
+$('#btnToMine').onclick=()=>switchTab('mine');
+
+/* реклама + язык */
+$('#adTg').onclick=()=>{haptic('light');const u='https://t.me/dmitriizmll';
+  if(tg&&tg.openLink){try{tg.openLink(u)}catch(e){location.href=u}}else location.href=u;};
+$('#adMail').onclick=()=>{haptic('light');location.href='mailto:boss_rf@inbox.ru';};
+$('#langBtn').onclick=()=>{haptic('light');lang=lang==='ru'?'en':'ru';localStorage.setItem('fss_lang',lang);
+  applyLang();renderList();go(step);};
+
+/* старт */
+applyLang();
+claimCoins();
+loadTop();
+loadCollections();
+})();
+</script>
+</body>
+</html>
