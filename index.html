@@ -379,3 +379,111 @@ async function authDebugHTML(){
   const d=await api('/api/debug_auth');
   return `<p style="margin-top:10px;font-size:12px;color:var(--ink3)">🔍 header: ${d.header_present?'✅ есть':'❌ нет'} · token на сервере: ${d.token_set?'✅':'❌ НЕТ'} · подпись: ${d.hash_match===true?'✅ совпадает':(d.hash_match===false?'❌ НЕ совпадает':'—')}<br>сервер ждёт admin_id ${d.admin_id}, у тебя ${meId}${d.user_id?' · initData user '+d.user_id:''}</p>`;
 }
+/* ---------- лента ---------- */
+let collections=[];
+async function loadCollections(){
+  const r=await api('/api/collections');
+  collections=(r.ok&&r.items.length)?r.items:[];
+  renderList();buildSlot();
+}
+function renderList(){
+  if(!collections.length){$('#list').innerHTML='<div class="empty"><div class="ic">🌱</div><h3>Сборов пока нет</h3><p>Стань первым — подай заявку на сбор.</p></div>';return;}
+  $('#list').innerHTML=collections.map((c,i)=>{
+    const pct=Math.min(100,Math.round((c.raised||0)/c.amount*100));
+    return `<div class="card glass" data-id="${c.id}" style="animation-delay:${i*70}ms">
+      <div class="top"><div class="ava" style="background:${GRADS[i%6]}">${EMO[i%6]}</div>
+      <div><h3>${esc(c.title||'Сбор')}</h3><span class="badge">✓ проверено</span></div></div>
+      <p class="story">${esc(c.story)}</p>
+      <div class="pbar"><i data-p="${pct}"></i></div>
+      <div class="amts"><span class="r" data-cur="0">0 ₽</span><span class="g">из ${fmt(c.amount)} ₽ · <b class="pct">${pct}%</b></span></div>
+      <div class="foot"><span class="sup">❤️ <b class="supn">${c.supporters||0}</b> поддержали</span>
+      <button class="bsup" data-id="${c.id}"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.2-9C1.3 8.7 3 5.5 6.2 5.5c2 0 3.2 1.2 3.8 2.3.6-1.1 1.8-2.3 3.8-2.3 3.2 0 4.9 3.2 3.4 6.5C19 16.5 12 21 12 21z"/></svg>Поддержать</button></div></div>`;
+  }).join('');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    $$('#list .card').forEach((card,i)=>{
+      const c=collections[i];
+      card.querySelector('.pbar i').style.width=Math.min(100,Math.round((c.raised||0)/c.amount*100))+'%';
+      countUp(card.querySelector('.r'),c.raised||0,1100);
+    });
+  }));
+  $$('#list .bsup').forEach(b=>b.onclick=()=>openSheet(+b.dataset.id));
+}
+
+/* ---------- шторка поддержки ---------- */
+let sheetId=null,sheetAmt=300;
+function openSheet(id){sheetId=id;haptic('medium');$('#ovl').classList.add('open');$('#sheet').classList.add('open');}
+function closeSheet(){$('#ovl').classList.remove('open');$('#sheet').classList.remove('open');}
+$('#ovl').onclick=closeSheet;
+$$('#chips .chip').forEach(ch=>ch.onclick=()=>{haptic('light');sheetAmt=+ch.dataset.a;
+  $$('#chips .chip').forEach(x=>x.classList.toggle('on',x===ch));});
+$('#shGo').onclick=async()=>{
+  if(!sheetId)return;
+  haptic('heavy');
+  const r=await api('/api/support',{method:'POST',body:JSON.stringify({id:sheetId,amount:sheetAmt})});
+  const c=collections.find(x=>x.id===sheetId);
+  if(r.ok&&c){
+    c.raised=r.raised;c.supporters=r.supporters;
+    const card=$(`#list .card[data-id="${sheetId}"]`);
+    if(card){
+      const num=card.querySelector('.r');countUp(num,r.raised,700);num.classList.remove('bump');void num.offsetWidth;num.classList.add('bump');
+      card.querySelector('.supn').textContent=r.supporters;
+      const pct=Math.min(100,Math.round(r.raised/c.amount*100));
+      card.querySelector('.pbar i').style.width=pct+'%';
+      card.querySelector('.pct').textContent=pct+'%';
+    }
+    toast(`❤️ +${fmt(sheetAmt)} ₽ в сбор «${(c.title||'').slice(0,22)}…»`);
+    closeSheet();
+    if(c.link){if(tg&&tg.openLink){try{tg.openLink(c.link)}catch(e){location.href=c.link}}else location.href=c.link;}
+  }else{toast(r.error||'Не получилось, попробуй ещё раз');}
+};
+
+/* ---------- колесо ---------- */
+const STEP=178,TC=['#7ed32f','#2f8fe6','#f0382e','#a44df0','#22a7d8','#ff8c1a'];
+let spinning=false,winner=null,tInt=null;
+function ticketHTML(c,ei,tilt){
+  const col=TC[ei%6];
+  const short=(c.story||'').split(/\s+/).slice(0,9).join(' ')+((c.story||'').length>50?'…':'');
+  return `<div class="ticket" style="--tilt:${tilt};--strip:${col}">
+    <div class="head"><span class="te">${EMO[ei%6]}</span><span class="tt">${esc(c.title||'Сбор')}</span></div>
+    <span class="desc">${esc(short)}</span>
+    <span class="ta">${fmt(c.amount)} ₽</span>
+  </div>`;
+}
+function buildSlot(){
+  const col=$('#slotCol');
+  if(!collections.length){col.innerHTML='';return;}
+  const rep=[...collections,...collections,...collections];
+  col.innerHTML=rep.map((c,i)=>ticketHTML(c,collections.indexOf(c),(i%2?'4deg':'-5deg'))).join('');
+  col.style.transition='none';col.style.transform='translateY(140px)';
+  $('#wTotal').textContent=fmt(collections.reduce((s,c)=>s+(c.supporters||0),0));
+}
+$('#spinBtn').onclick=()=>{
+  if(spinning||collections.length<2)return;
+  spinning=true;haptic('medium');
+  $('#spinBtn').disabled=true;$('#slot').classList.add('spinning');
+  const n=collections.length,winIdx=2*n+Math.floor(Math.random()*n);
+  winner=collections[winIdx%n];
+  const col=$('#slotCol');
+  col.style.transition='none';col.style.transform='translateY(140px)';
+  void col.offsetWidth;
+  col.style.transition='transform 4.8s cubic-bezier(.1,.75,.12,1)';
+  col.style.transform=`translateY(${215-(winIdx*STEP+75)}px)`;
+  setTimeout(()=>{
+    spinning=false;$('#spinBtn').disabled=false;$('#slot').classList.remove('spinning');haptic('success');
+    const ei=collections.indexOf(winner);
+    $('#wTicket').innerHTML=ticketHTML(winner,ei,'-6deg');
+    $('#wResTitle').textContent='Сбор дня: '+(winner.title||'');
+    $('#wResSub').textContent=winner.story||'';
+    let dl=+localStorage.getItem('fss_dl')||0;
+    if(!dl||dl<Date.now()){dl=Date.now()+864e5;localStorage.setItem('fss_dl',dl);}
+    clearInterval(tInt);
+    const tick=()=>{let s=Math.max(0,Math.floor((dl-Date.now())/1000));
+      $('#wTimer').textContent=[s/3600,s%3600/60,s%60].map(x=>String(Math.floor(x)).padStart(2,'0')).join(':');};
+    tick();tInt=setInterval(tick,1000);
+    $('#wresult').classList.add('open');
+  },5000);
+};
+$('#wClose').onclick=()=>$('#wresult').classList.remove('open');
+$('#wAgain').onclick=()=>{$('#wresult').classList.remove('open');setTimeout(()=>$('#spinBtn').click(),350);};
+$('#wCopy').onclick=async()=>{haptic('light');try{await navigator.clipboard.writeText(winner.link);}catch(e){}toast('📋 Ссылка скопирована');};
+$('#wSup').onclick=()=>{haptic('medium');openSheet(winner.id);};
