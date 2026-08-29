@@ -165,3 +165,95 @@ h2.sm{font-family:var(--fd);font-size:13px;margin:16px 0 10px;color:var(--ink2)}
 .abtns button{flex:1;border:none;border-radius:13px;padding:11px;font:800 13px var(--fb);cursor:pointer}
 .okb{background:linear-gradient(135deg,var(--acc2),var(--acc));color:var(--acc-ink)}
 .nob{background:rgba(192,90,84,.15);color:var(--err)}
+/* ═══ форма ═══ */
+.steps{display:flex;gap:6px;margin-bottom:16px}
+.steps i{flex:1;height:5px;border-radius:99px;background:var(--track)}
+.steps i.on{background:linear-gradient(90deg,var(--acc2),var(--acc));box-shadow:0 0 8px var(--glow)}
+.fcard{padding:17px;margin-bottom:14px}
+.field{margin-bottom:15px;position:relative}.field:last-child{margin:0}
+.field label{display:block;font-size:11.5px;font-weight:800;color:var(--ink2);margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px}
+.inp{width:100%;background:var(--glass2);border:1.5px solid var(--brd);color:var(--ink);padding:14px 15px;
+  border-radius:15px;font:inherit;font-size:14.5px;outline:none;transition:.15s}
+.inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(78,143,99,.15);background:#fff}
+textarea.inp{min-height:104px}
+.cnt{text-align:right;font-size:11px;color:var(--ink3);margin-top:5px}
+.sum{background:var(--glass2);border-radius:15px;padding:3px 14px;margin-bottom:14px;position:relative}
+.sum .li{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--brd);font-size:13px}
+.sum .li:last-child{border:none}
+.sum .k{color:var(--ink3)}.sum .v{font-weight:700;text-align:right;max-width:62%;word-break:break-word}
+.check{display:flex;gap:11px;cursor:pointer;margin:12px 0;font-size:13px;color:var(--ink2);position:relative}
+.check .bx{width:23px;height:23px;border:2px solid var(--brd);border-radius:8px;flex-shrink:0;display:grid;place-items:center;background:var(--glass2);transition:.15s}
+.check .bx svg{width:13px;height:13px;stroke:#fff;stroke-width:3.2;fill:none;opacity:0;transform:scale(.4);transition:.15s}
+.check.on .bx{background:var(--acc);border-color:var(--acc)}
+.check.on .bx svg{opacity:1;transform:none}
+.rbtns{display:flex;gap:10px}
+.btn{flex:1;border:none;border-radius:16px;padding:16px;font:800 14.5px var(--fb);cursor:pointer;transition:.15s}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:linear-gradient(135deg,var(--acc2),var(--acc));color:var(--acc-ink);box-shadow:0 10px 22px -8px var(--glow),inset 0 2px 3px rgba(255,255,255,.4)}
+.btn.pri:disabled{background:var(--track);color:var(--ink3);box-shadow:none}
+.btn.sec{background:var(--glass2);color:var(--ink2);border:1px solid var(--brd);flex:0 0 34%}
+.okwrap{text-align:center;padding:48px 24px}
+.okwrap .tk{width:90px;height:90px;border-radius:30px;background:rgba(78,143,99,.16);display:grid;place-items:center;margin:0 auto 20px;animation:pop .55s cubic-bezier(.2,1.5,.4,1);box-shadow:0 0 34px -6px var(--glow)}
+@keyframes pop{from{transform:scale(.3)}to{transform:scale(1)}}
+.okwrap .tk svg{width:40px;height:40px;stroke:var(--acc);stroke-width:2.8;fill:none}
+.okwrap h2{font-family:var(--fd);font-size:19px;font-weight:800;margin-bottom:9px}
+.okwrap p{font-size:13.5px;color:var(--ink2);max-width:260px;margin:0 auto 26px}
+
+/* ═══ шторка поддержки ═══ */
+.ovl{position:fixed;inset:0;background:rgba(44,58,46,.35);z-index:40;opacity:0;visibility:hidden;transition:.3s;backdrop-filter:blur(4px)}
+.ovl.open{opacity:1;visibility:visible}
+.sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:100%;max-width:480px;z-index:41;
+  background:rgba(255,255,255,.6);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);
+  border-top:1px solid var(--brd);border-radius:28px 28px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+  transition:transform .45s cubic-bezier(.2,.85,.25,1)}
+.sheet.open{transform:translate(-50%,0)}
+.sheet h3{font-family:var(--fd);font-size:16px;font-weight:800;margin-bottom:4px}
+.sheet .ss{font-size:12.5px;color:var(--ink2);margin-bottom:16px}
+.chips{display:flex;gap:9px;margin-bottom:16px}
+.chip{flex:1;border:1.5px solid var(--brd);background:var(--glass2);color:var(--ink2);border-radius:14px;
+  padding:12px 0;font:800 13px var(--fb);cursor:pointer;transition:.15s;font-variant-numeric:tabular-nums}
+.chip.on{border-color:var(--acc);color:var(--acc);background:rgba(78,143,99,.12);box-shadow:0 0 12px -3px var(--glow)}
+
+/* ═══ таб-бар ═══ */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:30;
+  background:rgba(255,255,255,.5);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--brd);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+body.in-form .tabbar{display:none}
+.tab{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 0;color:var(--ink3);font:700 10.5px var(--fb);transition:.2s;border-radius:14px}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;transition:.2s}
+.tab.active{color:var(--acc)}
+.tab.active svg{filter:drop-shadow(0 0 5px var(--glow))}
+
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(14px);z-index:60;
+  background:rgba(255,255,255,.7);backdrop-filter:blur(18px);border:1px solid var(--brd);padding:12px 19px;border-radius:16px;
+  font-size:13px;font-weight:700;color:var(--ink);opacity:0;transition:.25s;pointer-events:none;max-width:86%;box-shadow:var(--sh)}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.hide{display:none!important}
+.ovl{z-index:49}.sheet{z-index:50}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i>🌿</i><i>🍃</i><i>🌱</i><i>🍀</i></div>
+<div class="app">
+<header>
+  <div class="logo">🤝</div><h1>Взаимопомощь</h1>
+</header>
+<main>
+  <section class="screen active" id="scr-collections">
+    <div class="banner glass"><div class="ic">🛡️</div><p><b>Анонимная взаимопомощь.</b> Истории без имён, каждая заявка проходит модерацию.</p></div>
+    <button class="cta" id="ctaApply">＋ Подать заявку</button>
+    <div id="list"></div>
+    <div class="card glass" style="margin-top:2px">
+      <div class="top" style="margin-bottom:8px">
+        <div class="ava" style="background:linear-gradient(140deg,#e4c989,#c9a355)">📢</div>
+        <div><h3>Реклама и сотрудничество</h3>
+        <span class="badge">открыты к партнёрству</span></div>
+      </div>
+      <p class="story" style="margin-bottom:12px">Хотите разместить рекламу или предложить сотрудничество — пишите, всё обсудим!</p>
+      <div class="abtns" style="margin-top:0">
+        <button class="okb" id="adTg">✈️ @dmitriizmll</button>
+        <button class="btn sec" id="adMail" style="flex:1">✉️ boss_rf@inbox.ru</button>
+      </div>
+    </div>
+  </section>
