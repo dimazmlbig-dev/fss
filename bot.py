@@ -101,42 +101,27 @@ def verify_init_data(init_data: str):
     if not BOT_TOKEN:
         log.warning("verify: BOT_TOKEN не задан — проверка невозможна")
         return None
-    
-    # Логируем первые 40 символов initData (для диагностики)
-    log.info("verify: получен init_data, длина=%d, начало=%s...", len(init_data), init_data[:40])
-    
     try:
         p = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
-        log.info("verify: распарсены поля: %s", list(p.keys()))
-        
         h = p.pop("hash", None)
         if not h:
             log.warning("verify: в init_data нет поля hash")
             return None
-        
-        # свежесть: initData старше 24 часов не принимаем (анти-replay)
         try:
             auth_date = int(p.get("auth_date", "0"))
         except Exception:
             auth_date = 0
         if not auth_date or abs(time.time() - auth_date) > 86400:
-            log.warning("verify: просроченный auth_date (age=%ss)", int(time.time() - auth_date) if auth_date else '?')
+            log.warning("verify: просроченный auth_date")
             return None
-        
         data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode("utf-8"), hashlib.sha256).digest()
         calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
-        
-        log.info("verify: сравнение хешей | calc=%s | recv=%s | match=%s", calc_hash[:16], h[:16], calc_hash == h)
-        
         if not hmac.compare_digest(calc_hash, h):
             log.warning("verify: подпись init_data не совпала")
             return None
-        
         try:
-            user = json.loads(p.get("user", "{}"))
-            log.info("verify: успешно распарсен user_id=%s", user.get("id"))
-            return user
+            return json.loads(p.get("user", "{}"))
         except Exception:
             log.warning("verify: не удалось распарсить поле user")
             return None
@@ -150,6 +135,30 @@ def get_user(req):
 
 def is_admin(user):
     return bool(user and user.get("id") and int(user.get("id")) == ADMIN_CHAT_ID)
+
+# ═══════════ САМОДИАГНОСТИКА (без секретов) ═══════════
+async def h_debug_auth(req):
+    init_data = req.headers.get("X-Telegram-InitData") or ""
+    rep = {"header_present": bool(init_data), "len": len(init_data),
+           "token_set": bool(BOT_TOKEN), "admin_id": ADMIN_CHAT_ID}
+    if init_data:
+        p = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
+        h = p.pop("hash", None)
+        rep["auth_date"] = p.get("auth_date")
+        rep["now"] = int(time.time())
+        try:
+            rep["user_id"] = json.loads(p.get("user", "{}")).get("id")
+        except Exception:
+            rep["user_id"] = None
+        if h and BOT_TOKEN:
+            dcs = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
+            secret = hmac.new(b"WebAppData", BOT_TOKEN.encode("utf-8"), hashlib.sha256).digest()
+            calc = hmac.new(secret, dcs.encode("utf-8"), hashlib.sha256).hexdigest()
+            rep["hash_match"] = hmac.compare_digest(calc, h)
+        else:
+            rep["hash_match"] = None
+    log.info("debug_auth | %s", rep)
+    return web.json_response(rep)
 
 # ═══════════ УВЕДОМЛЕНИЯ И МОДЕРАЦИЯ ═══════════
 async def notify_admin(app_id: int):
@@ -358,6 +367,7 @@ async def main():
     init_db()
     app = web.Application(middlewares=[limiter, cors], client_max_size=64 * 1024)
     app.router.add_get("/api/health", lambda r: web.json_response({"ok": True}))
+    app.router.add_get("/api/debug_auth", h_debug_auth)
     app.router.add_get("/api/collections", h_collections)
     app.router.add_get("/api/my", h_my)
     app.router.add_post("/api/applications", h_submit)
