@@ -18,11 +18,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | 
 log = logging.getLogger("fss")
 
 load_dotenv()
-BOT_TOKEN     = os.getenv("BOT_TOKEN")
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
-MINIAPP_URL   = os.getenv("MINIAPP_URL", "")
-DB_PATH       = os.getenv("DB_PATH", "fss.db")
-PORT          = int(os.getenv("PORT", "8080"))
+BOT_TOKEN     = (os.getenv("BOT_TOKEN") or "").strip() or None
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0") or "0")
+MINIAPP_URL   = (os.getenv("MINIAPP_URL") or "").strip()
+DB_PATH       = (os.getenv("DB_PATH") or "fss.db").strip()
+PORT          = int(os.getenv("PORT", "8080") or "8080")
 
 ALLOWED_SUPPORT_AMOUNTS = (100, 300, 500, 1000)
 
@@ -101,28 +101,42 @@ def verify_init_data(init_data: str):
     if not BOT_TOKEN:
         log.warning("verify: BOT_TOKEN не задан — проверка невозможна")
         return None
+    
+    # Логируем первые 40 символов initData (для диагностики)
+    log.info("verify: получен init_data, длина=%d, начало=%s...", len(init_data), init_data[:40])
+    
     try:
         p = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
+        log.info("verify: распарсены поля: %s", list(p.keys()))
+        
         h = p.pop("hash", None)
         if not h:
             log.warning("verify: в init_data нет поля hash")
             return None
+        
         # свежесть: initData старше 24 часов не принимаем (анти-replay)
         try:
             auth_date = int(p.get("auth_date", "0"))
         except Exception:
             auth_date = 0
         if not auth_date or abs(time.time() - auth_date) > 86400:
-            log.warning("verify: просроченный auth_date")
+            log.warning("verify: просроченный auth_date (age=%ss)", int(time.time() - auth_date) if auth_date else '?')
             return None
+        
         data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode("utf-8"), hashlib.sha256).digest()
         calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+        
+        log.info("verify: сравнение хешей | calc=%s | recv=%s | match=%s", calc_hash[:16], h[:16], calc_hash == h)
+        
         if not hmac.compare_digest(calc_hash, h):
             log.warning("verify: подпись init_data не совпала")
             return None
+        
         try:
-            return json.loads(p.get("user", "{}"))
+            user = json.loads(p.get("user", "{}"))
+            log.info("verify: успешно распарсен user_id=%s", user.get("id"))
+            return user
         except Exception:
             log.warning("verify: не удалось распарсить поле user")
             return None
@@ -243,7 +257,7 @@ async def h_collections(req):
 async def h_my(req):
     user = get_user(req)
     if not user:
-        log.info("401 | /api/my")
+        log.warning("401 | /api/my | initData=%s", "present" if req.headers.get("X-Telegram-InitData") else "missing")
         return web.json_response({"ok": False, "error": "auth"}, status=401)
     rows = conn.execute("SELECT * FROM applications WHERE user_id=? ORDER BY id DESC", (user.get("id"),)).fetchall()
     return web.json_response({"ok": True, "items": [row2dict(r) for r in rows]})
@@ -251,7 +265,7 @@ async def h_my(req):
 async def h_submit(req):
     user = get_user(req)
     if not user:
-        log.info("401 | /api/applications")
+        log.warning("401 | /api/applications | initData=%s", "present" if req.headers.get("X-Telegram-InitData") else "missing")
         return web.json_response({"ok": False, "error": "Открой приложение из Telegram"}, status=401)
     if rate_limited(f"sub:{user.get('id')}", 5, 600):
         return web.json_response({"ok": False, "error": "Слишком много заявок, попробуйте позже"}, status=429)
