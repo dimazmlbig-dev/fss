@@ -1,5 +1,6 @@
-import asyncio, hashlib, hmac, json, logging, os, sqlite3, time, urllib.parse
+import asyncio, hashlib, hmac, json, logging, os, sqlite3, time, urllib.parse, re as _re
 from collections import defaultdict, deque
+import aiohttp
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
@@ -43,7 +44,7 @@ def init_db():
       name TEXT, text TEXT, created_at TEXT DEFAULT (datetime('now','localtime')));
     """)
     conn.commit()
-try:
+    try:
         conn.execute("ALTER TABLE applications ADD COLUMN ct_raised INTEGER DEFAULT 0")
     except Exception:
         pass
@@ -60,6 +61,7 @@ try:
 def make_title(story):
     t=story.replace("\n"," ").split(".")[0].split("!")[0].strip()
     return (t[:60]+"…") if len(t)>60 else t
+
 def row2dict(r): return dict(r) if r else None
 
 RL=defaultdict(deque)
@@ -88,8 +90,10 @@ def verify_init_data(init_data):
 
 def get_user(req):
     return verify_init_data(req.headers.get("X-Telegram-InitData") or req.query.get("init_data") or "")
+
 def is_admin(user):
     return bool(user and user.get("id") and int(user.get("id"))==ADMIN_CHAT_ID)
+
 def upsert_user(user):
     conn.execute("INSERT INTO users(user_id,username,first_name) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET username=excluded.username,first_name=excluded.first_name",
       (user.get("id"),user.get("username",""),user.get("first_name","")))
@@ -174,9 +178,58 @@ async def cors(req,handler):
     resp.headers["Referrer-Policy"]="no-referrer"
     return resp
 
+# ═══════════ СИНК CLOUDTIPS ═══════════
+_CT_PATTERNS=[
+  _re.compile(r'"collected"[^0-9]{0,10}(\d[\d\s]*)', _re.I),
+  _re.compile(r'"raised"[^0-9]{0,10}(\d[\d\s]*)', _re.I),
+  _re.compile(r'Собрано[^0-9]{0,40}?([\d\s]+)\s*₽', _re.I),
+]
+def parse_ct_amount(html):
+    for rx in _CT_PATTERNS:
+        m=rx.search(html)
+        if m:
+            digits=_re.sub(r'\D','',m.group(1))
+            if digits: return int(digits)
+    return None
+
+async def sync_cloudtips():
+    rows=conn.execute("SELECT id,link FROM applications WHERE status='approved' AND link LIKE '%tips.cloudtips.ru%'").fetchall()
+    if not rows: return
+    try:
+        async with aiohttp.ClientSession() as s:
+            for r in rows:
+                try:
+                    async with s.get(r["link"], headers={"User-Agent":"Mozilla/5.0"}, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                        html=await resp.text()
+                    amt=parse_ct_amount(html)
+                    if amt is not None:
+                        conn.execute("UPDATE applications SET ct_raised=? WHERE id=?",(amt,r["id"]))
+                        conn.commit()
+                        log.info("ct-sync | app=%s real=%s ₽", r["id"], amt)
+                except Exception as e:
+                    log.info("ct-sync | app=%s ошибка: %s", r["id"], e)
+    except Exception as e:
+        log.info("ct-sync | сессия: %s", e)
+
+async def ct_loop():
+    while True:
+        await asyncio.sleep(600)
+        await sync_cloudtips()
+
+async def h_admin_sync(req):
+    if not is_admin(get_user(req)):
+        return web.json_response({"ok":False},status=403)
+    await sync_cloudtips()
+    return web.json_response({"ok":True})
+
 async def h_collections(req):
     rows=conn.execute("SELECT * FROM applications WHERE status='approved' ORDER BY id DESC").fetchall()
-    return web.json_response({"ok":True,"items":[row2dict(r) for r in rows]})
+    items=[]
+    for r in rows:
+        d=row2dict(r)
+        d["raised"]=(d.get("raised") or 0)+(d.get("ct_raised") or 0)
+        items.append(d)
+    return web.json_response({"ok":True,"items":items})
 
 async def h_my(req):
     user=get_user(req)
@@ -312,9 +365,12 @@ async def main():
     app.router.add_get("/api/admin/list",h_admin_list)
     app.router.add_post("/api/admin/action",h_admin_action)
     app.router.add_post("/api/admin/delete",h_admin_delete)
+    app.router.add_post("/api/admin/sync",h_admin_sync)
     runner=web.AppRunner(app); await runner.setup()
     await web.TCPSite(runner,"0.0.0.0",PORT).start()
     log.info("🌐 API на порту %s, 🤖 бот стартует…",PORT)
+    asyncio.create_task(sync_cloudtips())
+    asyncio.create_task(ct_loop())
     if bot: await dp.start_polling(bot)
     else:
         while True: await asyncio.sleep(3600)
