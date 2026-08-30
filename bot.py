@@ -43,6 +43,10 @@ def init_db():
       name TEXT, text TEXT, created_at TEXT DEFAULT (datetime('now','localtime')));
     """)
     conn.commit()
+try:
+        conn.execute("ALTER TABLE applications ADD COLUMN ct_raised INTEGER DEFAULT 0")
+    except Exception:
+        pass
     if conn.execute("SELECT COUNT(*) c FROM applications").fetchone()["c"]==0:
         seed=[
          ("Долг по ЖКХ, мать с двумя детьми","https://tips.cloudtips.ru/demo1","После развода накопились коммунальные долги. Нужно оплатить текущие счета и закрыть просрочки.",50000,50000,120),
