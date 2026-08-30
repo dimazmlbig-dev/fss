@@ -305,7 +305,6 @@ body.in-form .tabbar{display:none}
   <div class="crow"><input class="inp" id="cinp" maxlength="300" data-kph="comPh"><button id="csend">➤</button></div>
 </div>
 <div class="toast" id="toast"></div>
-
 <script>
 (function(){
 const q=new URLSearchParams(location.search);
@@ -339,7 +338,7 @@ async function authDebugHTML(){const d=await api('/api/debug_auth');return `<p s
 
 async function claimCoins(){const r=await api('/api/coins/claim',{method:'POST',body:'{}'});if(r.ok){$('#coinPill').textContent='🪙 '+r.coins+(r.streak>1?' 🔥'+r.streak:'');if(!r.claimed&&r.earned)toast('🪙 +'+r.earned+' '+t('coinsLogin'));}}
 
-async function loadTop(){const r=await api('/api/top');if(!r.ok||!r.items.length){$('#topCard').style.display='none';return;}const M=['🥇','','🥉','4.','5.'];$('#topList').innerHTML=r.items.map((u,i)=>`<div class="trow"><span class="medal">${M[i]}</span><span class="nm">${esc(u.first_name||u.username||'—')}</span><span class="sm2">+${fmt(u.sum)} ₽</span></div>`).join('');}
+async function loadTop(){const r=await api('/api/top');if(!r.ok||!r.items.length){$('#topCard').style.display='none';return;}const M=['🥇','','','4.','5.'];$('#topList').innerHTML=r.items.map((u,i)=>`<div class="trow"><span class="medal">${M[i]}</span><span class="nm">${esc(u.first_name||u.username||'—')}</span><span class="sm2">+${fmt(u.sum)} ₽</span></div>`).join('');}
 
 let collections=[];
 async function loadCollections(){const cached=localStorage.getItem('fss_cache');if(cached){try{collections=JSON.parse(cached)||[];}catch(e){collections=[];}if(collections.length){renderList();buildSlot();}}const r=await api('/api/collections');collections=(r.ok&&r.items.length)?r.items:collections;if(collections.length)localStorage.setItem('fss_cache',JSON.stringify(collections));renderList();buildSlot();}
