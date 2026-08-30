@@ -178,7 +178,6 @@ async def cors(req,handler):
     resp.headers["Referrer-Policy"]="no-referrer"
     return resp
 
-# ═══════════ СИНК CLOUDTIPS ═══════════
 _CT_PATTERNS=[
   _re.compile(r'"collected"[^0-9]{0,10}(\d[\d\s]*)', _re.I),
   _re.compile(r'"raised"[^0-9]{0,10}(\d[\d\s]*)', _re.I),
@@ -217,8 +216,7 @@ async def ct_loop():
         await sync_cloudtips()
 
 async def h_admin_sync(req):
-    if not is_admin(get_user(req)):
-        return web.json_response({"ok":False},status=403)
+    if not is_admin(get_user(req)): return web.json_response({"ok":False},status=403)
     await sync_cloudtips()
     return web.json_response({"ok":True})
 
@@ -376,4 +374,4 @@ async def main():
         while True: await asyncio.sleep(3600)
 
 if __name__=="__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())
