@@ -109,14 +109,14 @@ async def notify_admin(app_id):
       [types.InlineKeyboardButton(text="👤 Профиль автора",url=f"tg://user?id={a.get('user_id')}")]])
     try:
         await bot.send_message(ADMIN_CHAT_ID,
-          f"📝 <b>Новая заявка #{a['id']}</b>\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>\n🔗 {a['link']}\n\n📖 {a['story'][:800]}\n\n👤 {a.get('first_name') or 'Аноним'}\n <code>{a.get('user_id','—')}</code>",
+          f"📝 <b>Новая заявка #{a['id']}</b>\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>\n🔗 {a['link']}\n\n📖 {a['story'][:800]}\n\n👤 {a.get('first_name') or 'Аноним'}\n🆔 <code>{a.get('user_id','—')}</code>",
           parse_mode="HTML",reply_markup=kb)
     except Exception as e: log.error("notify_admin: %s",e)
 
 async def notify_user(a,approved):
     if not a or not a.get("user_id") or bot is None: return
     try:
-        if approved: await bot.send_message(a["user_id"],f" Заявка <b>#{a['id']}</b> одобрена и появилась в ленте!",parse_mode="HTML")
+        if approved: await bot.send_message(a["user_id"],f"🎉 Заявка <b>#{a['id']}</b> одобрена и появилась в ленте!",parse_mode="HTML")
         else: await bot.send_message(a["user_id"],f"😔 Заявка #{a['id']} отклонена.")
     except Exception: pass
 
@@ -125,7 +125,7 @@ async def notify_channel(a):
     kb=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="❤️ Поддержать",url=a["link"] or MINIAPP_URL)]])
     try:
         await bot.send_message(CHANNEL_ID,
-          f" <b>Новый сбор</b>\n\n{a['title']}\n\n {a['story'][:500]}\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>",
+          f"🤝 <b>Новый сбор</b>\n\n{a['title']}\n\n📖 {a['story'][:500]}\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>",
           parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
     except Exception as e: log.error("notify_channel: %s",e)
 
@@ -171,7 +171,7 @@ async def cb_mod(cb):
     if cb.from_user.id!=ADMIN_CHAT_ID: return await cb.answer("Не твои кнопки 🙂",show_alert=True)
     act,app_id=cb.data.split(":")
     set_status(int(app_id),"approved" if act=="approve" else "rejected")
-    await cb.answer("Одобрено ✅" if act=="approve" else "Отклонено ")
+    await cb.answer("Одобрено ✅" if act=="approve" else "Отклонено ❌")
     try: await cb.message.edit_reply_markup(reply_markup=None)
     except Exception: pass
 
@@ -450,10 +450,20 @@ async def h_order_check(req):
             conn.close()
     return web.json_response({"ok":True,"order":order})
 
+async def h_health(req):
+    try:
+        conn=get_db()
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        conn.close()
+        return web.json_response({"ok":True,"db":True})
+    except Exception as e:
+        return web.json_response({"ok":True,"db":False,"error":str(e)})
+
 async def main():
     init_db()
     app=web.Application(middlewares=[limiter,cors],client_max_size=64*1024)
-    app.router.add_get("/api/health",lambda r: web.json_response({"ok":True}))
+    app.router.add_get("/api/health",h_health)
     app.router.add_get("/api/debug_auth",h_debug_auth)
     app.router.add_get("/api/collections",h_collections)
     app.router.add_get("/api/my",h_my)
