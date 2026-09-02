@@ -1,11 +1,12 @@
-import asyncio, hashlib, hmac, json, logging, os, sqlite3, time, urllib.parse, re as _re
+import asyncio, hashlib, hmac, json, logging, os, time, urllib.parse, re as _re
 from collections import defaultdict, deque
 import aiohttp
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
-import pymysql
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
 log = logging.getLogger("fss")
@@ -18,24 +19,25 @@ PORT=int(os.getenv("PORT","8080") or "8080")
 ALLOWED_SUPPORT_AMOUNTS=(100,300,500,1000)
 DAILY_COINS=10
 
-DB_HOST=os.getenv("DB_HOST","localhost")
-DB_NAME=os.getenv("DB_NAME","u3628836_fss_db")
-DB_USER=os.getenv("DB_USER","u3628836")
-DB_PASS=os.getenv("DB_PASS","Dslredjol4")
+DB_HOST=os.getenv("DB_HOST","db.behjilhcuwfsdibkctct.supabase.co")
+DB_PORT=int(os.getenv("DB_PORT","5432"))
+DB_NAME=os.getenv("DB_NAME","postgres")
+DB_USER=os.getenv("DB_USER","postgres")
+DB_PASS=os.getenv("DB_PASS","")
 
 bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 if bot is None: log.warning("BOT_TOKEN не задан — работает только API")
 dp = Dispatcher()
 
 def get_db():
-    return pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, database=DB_NAME, charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor)
+    return psycopg2.connect(host=DB_HOST, port=DB_PORT, database=DB_NAME, user=DB_USER, password=DB_PASS)
 
 def init_db():
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) as c FROM applications")
-            if cur.fetchone()['c']==0:
+            cur.execute("SELECT COUNT(*) FROM applications")
+            if cur.fetchone()[0]==0:
                 seed=[
                  ("Долг по ЖКХ, мать с двумя детьми","https://tips.cloudtips.ru/demo1","После развода накопились коммунальные долги. Нужно оплатить текущие счета и закрыть просрочки.",50000,50000,120),
                  ("Микрозаймы после сокращения","https://tips.cloudtips.ru/demo2","Попал под сокращение, перекрыл зарплату займами. Нужна помощь, чтобы пережить период поиска работы.",30000,30000,80),
@@ -86,7 +88,7 @@ def upsert_user(user):
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO users (telegram_id,username,first_name) VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE username=VALUES(username),first_name=VALUES(first_name)",
+            cur.execute("INSERT INTO users (telegram_id,username,first_name) VALUES (%s,%s,%s) ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username,first_name=EXCLUDED.first_name",
               (user.get("id"),user.get("username",""),user.get("first_name","")))
             conn.commit()
     finally:
@@ -95,7 +97,7 @@ def upsert_user(user):
 async def notify_admin(app_id):
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM applications WHERE id=%s",(app_id,))
             a=cur.fetchone()
     finally:
@@ -104,17 +106,17 @@ async def notify_admin(app_id):
     kb=types.InlineKeyboardMarkup(inline_keyboard=[
       [types.InlineKeyboardButton(text="✅ Одобрить",callback_data=f"approve:{app_id}"),
        types.InlineKeyboardButton(text="❌ Отклонить",callback_data=f"reject:{app_id}")],
-      [types.InlineKeyboardButton(text=" Профиль автора",url=f"tg://user?id={a.get('user_id')}")]])
+      [types.InlineKeyboardButton(text="👤 Профиль автора",url=f"tg://user?id={a.get('user_id')}")]])
     try:
         await bot.send_message(ADMIN_CHAT_ID,
-          f"📝 <b>Новая заявка #{a['id']}</b>\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>\n🔗 {a['link']}\n\n📖 {a['story'][:800]}\n\n {a.get('first_name') or 'Аноним'}\n🆔 <code>{a.get('user_id','—')}</code>",
+          f"📝 <b>Новая заявка #{a['id']}</b>\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>\n🔗 {a['link']}\n\n📖 {a['story'][:800]}\n\n👤 {a.get('first_name') or 'Аноним'}\n <code>{a.get('user_id','—')}</code>",
           parse_mode="HTML",reply_markup=kb)
     except Exception as e: log.error("notify_admin: %s",e)
 
 async def notify_user(a,approved):
     if not a or not a.get("user_id") or bot is None: return
     try:
-        if approved: await bot.send_message(a["user_id"],f"🎉 Заявка <b>#{a['id']}</b> одобрена и появилась в ленте!",parse_mode="HTML")
+        if approved: await bot.send_message(a["user_id"],f" Заявка <b>#{a['id']}</b> одобрена и появилась в ленте!",parse_mode="HTML")
         else: await bot.send_message(a["user_id"],f"😔 Заявка #{a['id']} отклонена.")
     except Exception: pass
 
@@ -123,7 +125,7 @@ async def notify_channel(a):
     kb=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="❤️ Поддержать",url=a["link"] or MINIAPP_URL)]])
     try:
         await bot.send_message(CHANNEL_ID,
-          f" <b>Новый сбор</b>\n\n{a['title']}\n\n📖 {a['story'][:500]}\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>",
+          f" <b>Новый сбор</b>\n\n{a['title']}\n\n {a['story'][:500]}\n\n💰 Цель: <b>{int(a['amount']):,} ₽</b>",
           parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
     except Exception as e: log.error("notify_channel: %s",e)
 
@@ -153,7 +155,7 @@ async def cb_my(cb):
     await cb.answer()
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM applications WHERE user_id=%s ORDER BY id DESC",(cb.from_user.id,))
             rows=cur.fetchall()
     finally:
@@ -169,7 +171,7 @@ async def cb_mod(cb):
     if cb.from_user.id!=ADMIN_CHAT_ID: return await cb.answer("Не твои кнопки 🙂",show_alert=True)
     act,app_id=cb.data.split(":")
     set_status(int(app_id),"approved" if act=="approve" else "rejected")
-    await cb.answer("Одобрено ✅" if act=="approve" else "Отклонено ❌")
+    await cb.answer("Одобрено ✅" if act=="approve" else "Отклонено ")
     try: await cb.message.edit_reply_markup(reply_markup=None)
     except Exception: pass
 
@@ -193,7 +195,7 @@ async def cors(req,handler):
 async def h_collections(req):
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM applications WHERE status='approved' ORDER BY promoted DESC, id DESC")
             rows=cur.fetchall()
             items=[]
@@ -209,7 +211,7 @@ async def h_my(req):
     if not user: return web.json_response({"ok":False,"error":"auth"},status=401)
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM applications WHERE user_id=%s ORDER BY id DESC",(user.get("id"),))
             rows=cur.fetchall()
     finally:
@@ -229,9 +231,9 @@ async def h_submit(req):
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO applications (user_id,title,link,story,amount,username,first_name) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            cur.execute("INSERT INTO applications (user_id,title,link,story,amount,username,first_name) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id",
               (user.get("id"),make_title(story),link,story,amount,user.get("username",""),user.get("first_name","")))
-            app_id=cur.lastrowid
+            app_id=cur.fetchone()[0]
             conn.commit()
     finally:
         conn.close()
@@ -249,11 +251,10 @@ async def h_support(req):
     if app_id<=0 or amount not in ALLOWED_SUPPORT_AMOUNTS: return web.json_response({"ok":False,"error":"bad params"},status=400)
     conn = get_db()
     try:
-        with conn.cursor() as cur:
-            cur.execute("UPDATE applications SET raised=raised+%s, supporters=supporters+1 WHERE id=%s AND status='approved'",(amount,app_id))
-            cur.execute("INSERT INTO supports(user_id,app_id,amount) VALUES(%s,%s,%s)",(user.get("id"),app_id,amount))
-            cur.execute("SELECT raised,supporters FROM applications WHERE id=%s",(app_id,))
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("UPDATE applications SET raised=raised+%s, supporters=supporters+1 WHERE id=%s AND status='approved' RETURNING raised,supporters",(amount,app_id))
             row=cur.fetchone()
+            cur.execute("INSERT INTO supports(user_id,app_id,amount) VALUES(%s,%s,%s)",(user.get("id"),app_id,amount))
             conn.commit()
     finally:
         conn.close()
@@ -263,11 +264,11 @@ async def h_support(req):
 async def h_top(req):
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""SELECT s.user_id, SUM(s.amount) as sum, u.first_name, u.username
               FROM supports s LEFT JOIN users u ON u.user_id=s.user_id
-              WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-              GROUP BY s.user_id ORDER BY sum DESC LIMIT 5""")
+              WHERE s.created_at >= NOW() - INTERVAL '7 days'
+              GROUP BY s.user_id, u.first_name, u.username ORDER BY sum DESC LIMIT 5""")
             rows=cur.fetchall()
     finally:
         conn.close()
@@ -279,7 +280,7 @@ async def h_coins_claim(req):
     uid=user.get("id"); today=time.strftime("%Y-%m-%d")
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM users WHERE telegram_id=%s",(uid,))
             row=cur.fetchone()
             if row and row["last_claim"]==today:
@@ -288,7 +289,10 @@ async def h_coins_claim(req):
             streak=(row["streak"]+1) if (row and row["last_claim"]==yesterday) else 1
             earned=DAILY_COINS+min(streak,5)
             coins=(row["coins"] if row else 0)+earned
-            cur.execute("INSERT INTO users (telegram_id,username,first_name,coins,streak,last_claim) VALUES (%s,%s,%s,%s,%s,%s) ON DUPLICATE KEY UPDATE coins=VALUES(coins),streak=VALUES(streak),last_claim=VALUES(last_claim),username=VALUES(username),first_name=VALUES(first_name)",
+            cur.execute("""INSERT INTO users (telegram_id,username,first_name,coins,streak,last_claim) 
+              VALUES (%s,%s,%s,%s,%s,%s) 
+              ON CONFLICT (telegram_id) DO UPDATE SET coins=EXCLUDED.coins,streak=EXCLUDED.streak,
+                last_claim=EXCLUDED.last_claim,username=EXCLUDED.username,first_name=EXCLUDED.first_name""",
               (uid,user.get("username",""),user.get("first_name",""),coins,streak,today))
             conn.commit()
     finally:
@@ -299,7 +303,7 @@ async def h_comments_get(req):
     app_id=int(req.query.get("app") or 0)
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT name,text,created_at FROM comments WHERE app_id=%s ORDER BY id DESC LIMIT 50",(app_id,))
             rows=cur.fetchall()
     finally:
@@ -342,7 +346,7 @@ async def h_admin_stats(req):
     if not is_admin(get_user(req)): return web.json_response({"ok":False},status=403)
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT COUNT(*) as c, COALESCE(SUM(amount),0) as s FROM applications WHERE status=%s",("pending",))
             p=cur.fetchone()
             cur.execute("SELECT COUNT(*) as c, COALESCE(SUM(amount),0) as s FROM applications WHERE status=%s",("approved",))
@@ -356,7 +360,7 @@ async def h_admin_list(req):
     s=req.query.get("status")
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if s:
                 cur.execute("SELECT * FROM applications WHERE status=%s ORDER BY id DESC",(s,))
             else:
@@ -390,7 +394,7 @@ async def h_account(req):
     if not user: return web.json_response({"ok":False,"error":"auth"},status=401)
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT user_id,username,first_name,email,coins,streak,vip_until,created_at FROM users WHERE telegram_id=%s",(user.get("id"),))
             acc=cur.fetchone()
             cur.execute("SELECT * FROM applications WHERE user_id=%s ORDER BY id DESC",(acc["user_id"] if acc else 0,))
@@ -411,9 +415,9 @@ async def h_order_create(req):
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO orders (user_id,service,amount,app_id) VALUES (%s,%s,%s,%s)",
+            cur.execute("INSERT INTO orders (user_id,service,amount,app_id) VALUES (%s,%s,%s,%s) RETURNING id",
               (user.get("id"),service,amount,app_id))
-            order_id=cur.lastrowid
+            order_id=cur.fetchone()[0]
             conn.commit()
     finally:
         conn.close()
@@ -423,7 +427,7 @@ async def h_order_check(req):
     order_id=int(req.query.get("id") or 0)
     conn = get_db()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM orders WHERE id=%s",(order_id,))
             order=cur.fetchone()
     finally:
