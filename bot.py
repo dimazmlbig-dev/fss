@@ -1,4 +1,4 @@
-import asyncio, hashlib, hmac, json, logging, os, time, urllib.parse, re as _re, base64
+import asyncio, base64, hashlib, hmac, json, logging, os, time, urllib.parse, re as _re
 from collections import defaultdict, deque
 import aiohttp
 from aiohttp import web
@@ -21,20 +21,26 @@ DAILY_COINS=10
 SITE_URL=os.getenv("SITE_URL","https://xn--80af0ahbd4ib.online")
 VK_APP_ID=os.getenv("VK_APP_ID","")
 VK_SECRET=os.getenv("VK_SECRET","")
-YM_WALLET=os.getenv("YM_WALLET","")
-YM_SECRET=os.getenv("YM_SECRET","")
 SECRET_KEY=os.getenv("SECRET_KEY","fss-super-secret-2026")
-SERVICES={"urgent":199,"promote":499,"vip":299,"no_commission":999}
-
-DB_HOST=os.getenv("DB_HOST","db.behjilhcuwfsdibkctct.supabase.co")
+DB_HOST=os.getenv("DB_HOST","")
 DB_PORT=int(os.getenv("DB_PORT","5432"))
 DB_NAME=os.getenv("DB_NAME","postgres")
 DB_USER=os.getenv("DB_USER","postgres")
 DB_PASS=os.getenv("DB_PASS","")
+EMAIL_RX=_re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 if bot is None: log.warning("BOT_TOKEN не задан — работает только API")
 dp = Dispatcher()
+
+METRICS={"requests":0,"cache_hit":0,"cache_miss":0,"started":time.time()}
+CACHE={}
+def cache_get(key,ttl):
+    e=CACHE.get(key)
+    if e and time.time()-e[0]<ttl: return e[1]
+    return None
+def cache_set(key,val): CACHE[key]=(time.time(),val)
+def bust(): CACHE.clear()
 
 def get_db():
     return psycopg2.connect(host=DB_HOST, port=DB_PORT, database=DB_NAME, user=DB_USER, password=DB_PASS)
@@ -53,7 +59,6 @@ def init_db():
                 for t,l,s,a,r,sup in seed:
                     cur.execute("INSERT INTO applications (title,link,story,amount,raised,supporters,status) VALUES (%s,%s,%s,%s,%s,%s,'approved')",(t,l,s,a,r,sup))
                 conn.commit()
-                log.info("Seed data inserted")
     finally:
         conn.close()
 
@@ -111,16 +116,6 @@ def get_user(req):
 def is_admin(user):
     return bool(user and user.get("id") and int(user.get("id"))==ADMIN_CHAT_ID)
 
-def upsert_user(user):
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("INSERT INTO users (telegram_id,username,first_name,auth_type) VALUES (%s,%s,%s,'telegram') ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username,first_name=EXCLUDED.first_name",
-              (str(user.get("id")),user.get("username",""),user.get("first_name","")))
-            conn.commit()
-    finally:
-        conn.close()
-
 async def notify_admin(app_id):
     conn = get_db()
     try:
@@ -166,6 +161,7 @@ def set_status(app_id,status):
             a=cur.fetchone()
     finally:
         conn.close()
+    bust()
     if a:
         asyncio.create_task(notify_user(a,status=="approved"))
         if status=="approved": asyncio.create_task(notify_channel(a))
@@ -188,7 +184,7 @@ async def cb_my(cb):
     finally:
         conn.close()
     if not rows: return await cb.message.answer("Пока нет заявок. Подай через «Подать заявку»!")
-    em={"pending":"⏳","approved":"✅","rejected":"❌"}
+    em={"pending":"⏳","approved":"✅","rejected":"❌","hidden":"🚩"}
     await cb.message.answer("📊 <b>Твои заявки:</b>\n\n"+"".join(
       f"#{a['id']} — {int(a['amount']):,} ₽ · {em.get(a['status'],'?')}\n🔗 {a['link']}\n\n" for a in rows),
       parse_mode="HTML",disable_web_page_preview=True)
@@ -204,6 +200,7 @@ async def cb_mod(cb):
 
 @web.middleware
 async def limiter(req,handler):
+    METRICS["requests"]+=1
     ip=req.remote or "unknown"
     if rate_limited("ip:"+ip,120,60): return web.json_response({"ok":False,"error":"too many requests"},status=429)
     return await handler(req)
@@ -215,14 +212,26 @@ async def cors(req,handler):
     resp.headers["Access-Control-Allow-Headers"]="Content-Type, X-Telegram-InitData, Authorization, X-Auth-Token"
     resp.headers["Access-Control-Allow-Methods"]="GET, POST, OPTIONS"
     resp.headers["X-Content-Type-Options"]="nosniff"
+    resp.headers["X-Frame-Options"]="DENY"
     resp.headers["Referrer-Policy"]="no-referrer"
     return resp
 
-async def h_config(req):
-    return web.json_response({"ok":True,"vk_app_id":VK_APP_ID,"site":SITE_URL,"services":SERVICES})
+async def h_health(req):
+    try:
+        conn=get_db()
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        conn.close()
+        return web.json_response({"ok":True,"db":True})
+    except Exception as e:
+        return web.json_response({"ok":True,"db":False,"error":str(e)})
 
-# ═══════════ АВТОРИЗАЦИЯ ═══════════
-EMAIL_RX=_re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+async def h_metrics(req):
+    if not is_admin(get_user(req)): return web.json_response({"ok":False},status=403)
+    return web.json_response({"ok":True,"requests":METRICS["requests"],"cache_hit":METRICS["cache_hit"],"cache_miss":METRICS["cache_miss"],"uptime":int(time.time()-METRICS["started"])})
+
+async def h_config(req):
+    return web.json_response({"ok":True,"vk_app_id":VK_APP_ID,"site":SITE_URL})
 
 async def h_auth_register(req):
     if rate_limited("reg:"+(req.remote or ""),5,3600): return web.json_response({"ok":False,"error":"Слишком много попыток"},status=429)
@@ -302,20 +311,26 @@ async def h_auth_vk(req):
         conn.close()
     raise web.HTTPFound(SITE_URL+f"/#token={make_token(-uid,name)}")
 
-# ═══════════ ЛЕНТА / ЗАЯВКИ / ДОНАТЫ ═══════════
 async def h_collections(req):
+    hit=cache_get("collections",30)
+    if hit is not None:
+        METRICS["cache_hit"]+=1
+        return web.json_response(hit)
+    METRICS["cache_miss"]+=1
     conn = get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM applications WHERE status='approved' ORDER BY promoted DESC, id DESC")
+            cur.execute("SELECT * FROM applications WHERE status='approved' ORDER BY id DESC")
             rows=cur.fetchall()
-            items=[]
-            for r in rows:
-                r["raised"]=(r.get("raised") or 0)+(r.get("ct_raised") or 0)
-                items.append(r)
     finally:
         conn.close()
-    return web.json_response({"ok":True,"items":items})
+    items=[]
+    for r in rows:
+        r["raised"]=(r.get("raised") or 0)+(r.get("ct_raised") or 0)
+        items.append(r)
+    payload={"ok":True,"items":items}
+    cache_set("collections",payload)
+    return web.json_response(payload)
 
 async def h_my(req):
     user=get_user(req)
@@ -369,10 +384,16 @@ async def h_support(req):
             conn.commit()
     finally:
         conn.close()
+    bust()
     if not row: return web.json_response({"ok":False,"error":"not found"},status=404)
     return web.json_response({"ok":True,"raised":row["raised"],"supporters":row["supporters"]})
 
 async def h_top(req):
+    hit=cache_get("top",60)
+    if hit is not None:
+        METRICS["cache_hit"]+=1
+        return web.json_response(hit)
+    METRICS["cache_miss"]+=1
     conn = get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -383,7 +404,9 @@ async def h_top(req):
             rows=cur.fetchall()
     finally:
         conn.close()
-    return web.json_response({"ok":True,"items":rows})
+    payload={"ok":True,"items":rows}
+    cache_set("top",payload)
+    return web.json_response(payload)
 
 async def h_coins_claim(req):
     user=get_user(req)
@@ -392,7 +415,7 @@ async def h_coins_claim(req):
     conn = get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM users WHERE telegram_id=%s OR (CAST(%s AS BIGINT)<0 AND user_id=ABS(CAST(%s AS BIGINT)))",(str(uid) if uid>0 else None, uid, uid))
+            cur.execute("SELECT * FROM users WHERE telegram_id=%s",(str(uid) if uid>0 else None,))
             row=cur.fetchone()
             if row and row["last_claim"]==today:
                 return web.json_response({"ok":True,"coins":row["coins"],"streak":row["streak"],"claimed":True})
@@ -402,7 +425,7 @@ async def h_coins_claim(req):
             coins=(row["coins"] if row else 0)+earned
             if uid>0:
                 cur.execute("""INSERT INTO users (telegram_id,username,first_name,coins,streak,last_claim) VALUES (%s,%s,%s,%s,%s,%s)
-                  ON CONFLICT (telegram_id) DO UPDATE SET coins=EXCLUDED.coins,streak=EXCLUDED.streak,last_claim=EXCLUDED.last_claim""",
+                  ON CONFLICT (telegram_id) DO UPDATE SET coins=EXCLUDED.coins,streak=EXCLUDED.streak,last_claim=EXCLUDED.last_claim,username=EXCLUDED.username,first_name=EXCLUDED.first_name""",
                   (str(uid),user.get("username",""),user.get("first_name",""),coins,streak,today))
             else:
                 cur.execute("UPDATE users SET coins=%s,streak=%s,last_claim=%s WHERE user_id=%s",(coins,streak,today,-uid))
@@ -439,7 +462,31 @@ async def h_comments_post(req):
         conn.close()
     return web.json_response({"ok":True})
 
-# ═══════════ ЛК ═══════════
+async def h_report(req):
+    user=get_user(req)
+    if not user: return web.json_response({"ok":False,"error":"auth"},status=401)
+    if rate_limited(f"rep:{user.get('id')}",5,3600): return web.json_response({"ok":False,"error":"Лимит жалоб"},status=429)
+    b=await req.json(); app_id=int(b.get("app_id") or 0)
+    if app_id<=0: return web.json_response({"ok":False},status=400)
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM reports WHERE app_id=%s AND user_id=%s",(app_id,user.get("id")))
+            if cur.fetchone(): return web.json_response({"ok":True,"already":True})
+            cur.execute("INSERT INTO reports (app_id,user_id) VALUES (%s,%s)",(app_id,user.get("id")))
+            cur.execute("SELECT COUNT(*) FROM reports WHERE app_id=%s",(app_id,))
+            cnt=cur.fetchone()[0]
+            if cnt>=2:
+                cur.execute("UPDATE applications SET status='hidden' WHERE id=%s",(app_id,))
+            conn.commit()
+    finally:
+        conn.close()
+    bust()
+    if cnt>=2 and bot:
+        try: await bot.send_message(ADMIN_CHAT_ID,f"🚩 Сбор #{app_id} скрыт автоматически: {cnt} жалобы. Проверь вручную.")
+        except Exception: pass
+    return web.json_response({"ok":True,"count":cnt})
+
 async def h_account(req):
     user=get_user(req)
     if not user: return web.json_response({"ok":False,"error":"auth"},status=401)
@@ -448,111 +495,15 @@ async def h_account(req):
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if uid>0:
-                cur.execute("SELECT user_id,username,first_name,email,coins,streak,vip_until,auth_type,created_at FROM users WHERE telegram_id=%s",(str(uid),))
+                cur.execute("SELECT user_id,username,first_name,email,coins,streak,auth_type,created_at FROM users WHERE telegram_id=%s",(str(uid),))
             else:
-                cur.execute("SELECT user_id,username,first_name,email,coins,streak,vip_until,auth_type,created_at FROM users WHERE user_id=%s",(-uid,))
+                cur.execute("SELECT user_id,username,first_name,email,coins,streak,auth_type,created_at FROM users WHERE user_id=%s",(-uid,))
             acc=cur.fetchone()
             cur.execute("SELECT * FROM applications WHERE user_id=%s ORDER BY id DESC",(uid,))
             apps=cur.fetchall()
-            cur.execute("SELECT o.*, a.title as app_title FROM orders o LEFT JOIN applications a ON o.app_id=a.id WHERE o.user_id=%s ORDER BY o.id DESC LIMIT 20",(uid,))
-            orders=cur.fetchall()
     finally:
         conn.close()
-    return web.json_response({"ok":True,"account":acc,"applications":apps,"orders":orders})
-
-# ═══════════ ОПЛАТА ═══════════
-def apply_service(cur,order):
-    if order["service"]=="urgent":
-        cur.execute("UPDATE applications SET urgent=1 WHERE id=%s AND user_id=%s",(order["app_id"],order["user_id"]))
-    elif order["service"]=="promote":
-        until=time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()+7*86400))
-        cur.execute("UPDATE applications SET promoted=1,promote_until=%s WHERE id=%s AND user_id=%s",(until,order["app_id"],order["user_id"]))
-    elif order["service"]=="vip":
-        until=time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()+30*86400))
-        cur.execute("UPDATE users SET vip_until=%s WHERE user_id=(SELECT user_id FROM users WHERE telegram_id=CAST(%s AS TEXT) OR user_id=ABS(%s) LIMIT 1)",(until,order["user_id"],order["user_id"]))
-    conn_commit=True
-
-async def h_order_create(req):
-    user=get_user(req)
-    if not user: return web.json_response({"ok":False,"error":"auth"},status=401)
-    b=await req.json()
-    service=b.get("service"); app_id=int(b.get("app_id") or 0)
-    if service not in SERVICES: return web.json_response({"ok":False,"error":"bad params"},status=400)
-    amount=SERVICES[service]
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("INSERT INTO orders (user_id,service,amount,app_id) VALUES (%s,%s,%s,%s) RETURNING id",(user.get("id"),service,amount,app_id))
-            order_id=cur.fetchone()[0]; conn.commit()
-    finally:
-        conn.close()
-    pay=f"https://yoomoney.ru/quickpay/confirm.xml?receiver={YM_WALLET}&amount={amount}&label=order_{order_id}&paymentType=AC&successURL={SITE_URL}/%23paid" if YM_WALLET else ""
-    return web.json_response({"ok":True,"order_id":order_id,"amount":amount,"payment_url":pay})
-
-async def h_pay_notify(req):
-    b=await req.post()
-    if b.get("test_notification")=="true": return web.json_response({"ok":True})
-    s="&".join([b.get("notification_type",""),b.get("operation_id",""),b.get("amount",""),b.get("currency",""),b.get("datetime",""),b.get("sender",""),b.get("codepro",""),YM_SECRET,b.get("operation_label","")])
-    if not YM_SECRET or hashlib.sha1(s.encode()).hexdigest()!=b.get("sha1_hash") or b.get("codepro")=="true":
-        return web.json_response({"ok":False},status=403)
-    label=b.get("operation_label","")
-    if label.startswith("order_"):
-        order_id=int(label[6:])
-        conn = get_db()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT * FROM orders WHERE id=%s AND status='pending'",(order_id,))
-                order=cur.fetchone()
-                if order and float(b.get("amount","0"))>=order["amount"]:
-                    cur.execute("UPDATE orders SET status='paid',paid_at=%s WHERE id=%s",(time.strftime("%Y-%m-%d %H:%M:%S"),order_id))
-                    apply_service(cur,order)
-                conn.commit()
-        finally:
-            conn.close()
-    return web.json_response({"ok":True})
-
-async def h_admin_orders(req):
-    if not is_admin(get_user(req)): return web.json_response({"ok":False},status=403)
-    conn = get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM orders WHERE status='pending' ORDER BY id DESC LIMIT 20")
-            rows=cur.fetchall()
-    finally:
-        conn.close()
-    return web.json_response({"ok":True,"items":rows})
-
-async def h_admin_order_confirm(req):
-    if not is_admin(get_user(req)): return web.json_response({"ok":False},status=403)
-    b=await req.json(); order_id=int(b.get("id") or 0)
-    conn = get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM orders WHERE id=%s",(order_id,))
-            order=cur.fetchone()
-            if order:
-                cur.execute("UPDATE orders SET status='paid',paid_at=%s WHERE id=%s",(time.strftime("%Y-%m-%d %H:%M:%S"),order_id))
-                apply_service(cur,order)
-            conn.commit()
-    finally:
-        conn.close()
-    return web.json_response({"ok":True})
-
-# ═══════════ АДМИН ═══════════
-async def h_debug_auth(req):
-    init_data=req.headers.get("X-Telegram-InitData") or ""
-    rep={"header_present":bool(init_data),"len":len(init_data),"token_set":bool(BOT_TOKEN),"admin_id":ADMIN_CHAT_ID}
-    if init_data:
-        p=dict(urllib.parse.parse_qsl(init_data,keep_blank_values=True))
-        h=p.pop("hash",None)
-        rep["auth_date"]=p.get("auth_date"); rep["now"]=int(time.time())
-        try: rep["user_id"]=json.loads(p.get("user","{}")).get("id")
-        except Exception: rep["user_id"]=None
-        if h and BOT_TOKEN:
-            dcs="\n".join(f"{k}={v}" for k,v in sorted(p.items()))
-            secret=hmac.new(b"WebAppData",BOT_TOKEN.encode("utf-8"),hashlib.sha256).digest()
-            rep["hash_match"]=hmac.compare_digest(hmac.new(secret,dcs.encode("utf-8"),hashlib.sha256).hexdigest(),h)
-    return web.json_response(rep)
+    return web.json_response({"ok":True,"account":acc,"applications":apps})
 
 async def h_admin_stats(req):
     if not is_admin(get_user(req)): return web.json_response({"ok":False},status=403)
@@ -563,11 +514,11 @@ async def h_admin_stats(req):
             p=cur.fetchone()
             cur.execute("SELECT COUNT(*) as c, COALESCE(SUM(amount),0) as s FROM applications WHERE status=%s",("approved",))
             a=cur.fetchone()
-            cur.execute("SELECT COUNT(*) as c, COALESCE(SUM(amount),0) as s FROM orders WHERE status=%s",("paid",))
-            o=cur.fetchone()
+            cur.execute("SELECT COUNT(*) as c FROM applications WHERE status=%s",("hidden",))
+            h=cur.fetchone()
     finally:
         conn.close()
-    return web.json_response({"ok":True,"pending":p["c"],"approved":a["c"],"approved_sum":a["s"],"revenue":o["s"]})
+    return web.json_response({"ok":True,"pending":p["c"],"approved":a["c"],"approved_sum":a["s"],"hidden":h["c"]})
 
 async def h_admin_list(req):
     if not is_admin(get_user(req)): return web.json_response({"ok":False},status=403)
@@ -599,22 +550,29 @@ async def h_admin_delete(req):
             conn.commit()
     finally:
         conn.close()
+    bust()
     return web.json_response({"ok":True})
 
-async def h_health(req):
-    try:
-        conn=get_db()
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1")
-        conn.close()
-        return web.json_response({"ok":True,"db":True})
-    except Exception as e:
-        return web.json_response({"ok":True,"db":False,"error":str(e)})
+async def h_debug_auth(req):
+    init_data=req.headers.get("X-Telegram-InitData") or ""
+    rep={"header_present":bool(init_data),"len":len(init_data),"token_set":bool(BOT_TOKEN),"admin_id":ADMIN_CHAT_ID}
+    if init_data:
+        p=dict(urllib.parse.parse_qsl(init_data,keep_blank_values=True))
+        h=p.pop("hash",None)
+        rep["auth_date"]=p.get("auth_date"); rep["now"]=int(time.time())
+        try: rep["user_id"]=json.loads(p.get("user","{}")).get("id")
+        except Exception: rep["user_id"]=None
+        if h and BOT_TOKEN:
+            dcs="\n".join(f"{k}={v}" for k,v in sorted(p.items()))
+            secret=hmac.new(b"WebAppData",BOT_TOKEN.encode("utf-8"),hashlib.sha256).digest()
+            rep["hash_match"]=hmac.compare_digest(hmac.new(secret,dcs.encode("utf-8"),hashlib.sha256).hexdigest(),h)
+    return web.json_response(rep)
 
 async def main():
     init_db()
     app=web.Application(middlewares=[limiter,cors],client_max_size=64*1024)
     app.router.add_get("/api/health",h_health)
+    app.router.add_get("/api/metrics",h_metrics)
     app.router.add_get("/api/config",h_config)
     app.router.add_post("/api/auth/register",h_auth_register)
     app.router.add_post("/api/auth/login",h_auth_login)
@@ -629,18 +587,15 @@ async def main():
     app.router.add_post("/api/coins/claim",h_coins_claim)
     app.router.add_get("/api/comments",h_comments_get)
     app.router.add_post("/api/comments",h_comments_post)
+    app.router.add_post("/api/report",h_report)
     app.router.add_get("/api/account",h_account)
-    app.router.add_post("/api/order",h_order_create)
-    app.router.add_post("/api/pay/notify",h_pay_notify)
     app.router.add_get("/api/admin/stats",h_admin_stats)
     app.router.add_get("/api/admin/list",h_admin_list)
     app.router.add_post("/api/admin/action",h_admin_action)
     app.router.add_post("/api/admin/delete",h_admin_delete)
-    app.router.add_get("/api/admin/orders",h_admin_orders)
-    app.router.add_post("/api/admin/order_confirm",h_admin_order_confirm)
     runner=web.AppRunner(app); await runner.setup()
     await web.TCPSite(runner,"0.0.0.0",PORT).start()
-    log.info("🌐 API на порту %s, 🤖 бот стартует…",PORT)
+    log.info("🌐 API на порту %s (без коммерции), 🤖 бот стартует…",PORT)
     if bot: await dp.start_polling(bot)
     else:
         while True: await asyncio.sleep(3600)
